@@ -13,7 +13,7 @@ class Gene(models.Model):
     #tair_accession = models.CharField(max_length=30) #Locus:2025361
     #gene__type = models.CharField(max_length=15) # protein_coding
     #associated_loci = models.TextField()
-
+    #TEST FOR SYNCHRONIZATION
     
     def __unicode__(self):
         return self.locus_identifier

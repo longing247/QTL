@@ -4,6 +4,7 @@ from django.contrib import admin
 from qtl import views
 admin.autodiscover()
 
+
 urlpatterns = patterns('',
     # Examples:
     # url(r'^$', 'QTL.views.home', name='home'),
