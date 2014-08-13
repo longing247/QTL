@@ -56,9 +56,22 @@ class LOD(models.Model):
     marker_name = models.ForeignKey(Marker)
     
     def __unicode__(self):
-        return self.LOD_score
+        return self.locus_identifier
     
+class Parent(models.Model):
+    
+    parent_type = models.CharField(max_length=20)
+    expression = models.DecimalField(max_digits = 25, decimal_places = 15)
+    locus_identifier = models.ForeignKey(Gene)
+    
+    def __unicode__(self):
+        return self.parent_type 
 
+#class RIL(models.Model):
+#    RIL_name = models.CharField(max_length=20)
+#    expression = models.DecimalField(max_digits = 12, decimal_places = 10)
+#    locus_identifier = models.ForeignKey(Gene)
+    
     
 #class GO(models.Model):
 # is it necessary to split it into 3 categories

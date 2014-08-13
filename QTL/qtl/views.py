@@ -11,8 +11,8 @@ from django.conf import settings
 from django.core.context_processors import csrf
 from django.contrib import messages
 
-from .models import Experiment,Gene,Marker,LOD
-from .forms import GeneUploadFileForm,MarkerUploadFileForm, EXPUploadFileForm
+from .models import Experiment,Gene,Marker,LOD,Parent
+from .forms import GeneUploadFileForm,MarkerUploadFileForm, EXPUploadFileForm,ParentUploadFileForm
 
 '''
 WUR Seed Lab eQTL expression dataset was used for test purpose. 
@@ -83,6 +83,27 @@ def experimentuploadView(request):
     else:
         form = EXPUploadFileForm()       
     return render_to_response('qtl/experimentupload.html',args)
+
+def parentuploadView(request):
+    '''
+    handling parent file upload event through Http request method
+    URL: ~/qtl/parent/ 
+    '''
+    
+    args = {}
+    args.update(csrf(request))
+    if request.method=='POST':
+        #file_instance = UploadFile()
+        form = ParentUploadFileForm(request.POST, request.FILES)
+        if form.is_valid():
+            parentUpload(request.FILES['parentfile'])
+            return HttpResponseRedirect('success/')
+
+        else:
+            messages.error(request,'Error')
+    else:
+        form = EXPUploadFileForm()       
+    return render_to_response('qtl/parentupload.html',args)
 
 def geneUpload(f):
     
@@ -184,6 +205,38 @@ def expUpload(f):
                               marker_name =  Marker.objects.get(pk=marker_list[gene-1]),
                               LOD_score =  line[gene])
                 add_lod.save()
+    toc = time.clock()            
+    print 'in %f seconds' % (toc-tic)
+    print '%d records added' %i
+
+def parentUpload(f):   
+    '''
+    Parent: 
+    class Parent(models.Model):
+    parent_type = models.CharField(max_length=20)
+    expression = models.DecimalField(max_digits = 12, decimal_places = 10)
+    locus_identifier = models.ForeignKey(Gene)
+    '''
+    tic = time.clock()   
+    csv_reader = csv.reader(f,delimiter='\t')
+    add_parent = Parent()
+    parent_list = []  
+    i=0
+    for line in csv_reader:
+        if 'Parents' in line[0]:
+            for parent in range(1,len(line)):
+                parent_list.append(line[parent])
+        else:
+            i+=1
+            print i
+            for exp in range(1,len(line)):
+                if line[exp] == '':
+                    continue                 
+                else:
+                    add_parent = Parent(parent_type =  parent_list[exp-1],
+                                        expression =  line[exp],
+                                        locus_identifier = Gene.objects.get(pk= line[0]))
+                    add_parent.save()
     toc = time.clock()            
     print 'in %f seconds' % (toc-tic)
     print '%d records added' %i

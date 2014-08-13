@@ -29,3 +29,11 @@ class EXPUploadFileForm(forms.Form):
     #title = forms.CharField(max_length=50)
     #file = forms.FileField()
     expfile = forms.FileField()
+
+class ParentUploadFileForm(forms.Form):
+    '''
+    classdocs
+    '''
+    #title = forms.CharField(max_length=50)
+    #file = forms.FileField()
+    parentfile = forms.FileField()
