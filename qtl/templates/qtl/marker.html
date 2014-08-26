@@ -1,0 +1,20 @@
+{% load staticfiles %}
+<link rel="stylesheet" href="{% static 'qtl/css/style.css' %}" type="text/css"/>
+
+{% if marker %}
+
+<ul>
+	<li>Marker name: {{ marker.marker_name }}</li>
+	<li>Marker chromosome: {{ marker.marker_chromosome }}</li>
+	<li>Marker cm: {{ marker.marker_cm }}</li>
+	<li>Marker physical position: {{ marker.marker_phys_pos }}</li>
+</ul>
+
+{% else %}
+
+	<form action="." method="get">
+		<input id="search_marker" name ="marker" type="text"/>
+		<input type="submit" id="search_submit" value="Search" />
+
+	</form>
+{% endif %}

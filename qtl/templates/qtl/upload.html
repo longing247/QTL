@@ -1,0 +1,13 @@
+<form action="/qtl/upload/" method="post" enctype="multipart/form-data" >
+<input name = "genefile" type="file" id="genefile" /> 
+<input type="submit" id="gene_submit" value = "Gene upload" /> <br><br>
+<input name = "markerfile" type="file" id="marker_file" />
+<input type="submit" id="marker_submit" value = "Marker upload" /> <br><br>
+<input name = "expfile" type="file" id="exp_file" />
+<input type="submit" id="exp_submit" value = "Experiment upload" /> <br><br>
+<input name = "parentfile" type="file" id="parent_file" />
+<input type="submit" id="parent_submit" value = "Parent upload" /> <br><br>
+<input name = "rilfile" type="file" id="ril_file" />
+<input type="submit" id="ril_submit" value = "RIL upload" /> <br><br>
+{% csrf_token %}
+</form>

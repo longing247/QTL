@@ -1,0 +1,139 @@
+
+{% if express_list %}
+
+{% load staticfiles %}
+<link rel="stylesheet" href="{% static 'qtl/css/canvasXpress.css' %}" type="text/css"/>
+
+
+<script type="text/javascript" src="{% static 'qtl/js/canvasXpress.min.js' %}"></script>
+<script id='demoScript'> 
+var parent_type_list_js = {{ parent_type_list|safe }};
+var expression_list_js = {{ express_list|safe }};
+var ril_type_list_js = {{ js_ril_type_list|safe }}
+var ril_exp_list_js = {{ js_ril_avg_exp_list|safe }}
+var search_gene_js = {{ search_gene|safe }};
+var marker_list_js = {{js_marker_list|safe}}
+var exp_list_js = {{js_lod_list|safe}}
+var showDemo = function () {
+    var cx1 = new CanvasXpress('canvas1',
+      {
+        'y':{
+        	'smps' : parent_type_list_js,
+        	'data' : expression_list_js,
+         	'vars' : ['Expression in parent'],
+		 	'desc' : ['LOD']
+        	}
+     },
+      {'axisTickFontStyle': 'bold',
+      'axisTickScaleFontFactor': 1.5,
+      'axisTitleFontStyle': 'italic',
+      'axisTitleScaleFontFactor': 1.5,         
+      'citationFontStyle': 'italic',
+      'fontStyle': 'italic',
+      'graphOrientation': 'vertical',
+      'graphType': 'Bar',
+      'legendBox': false,
+      'legendScaleFontFactor': 1.2,
+      'marginBottom': 30,
+      'showShadow': true,
+      'title': search_gene_js,
+      'titleHeight': 60,
+      'xAxis2Show': false
+      }
+    );
+  
+	var cx2 = new CanvasXpress('canvas2',{
+	        'y':{
+	        	'smps' : ril_type_list_js,
+	        	'data' : ril_exp_list_js,
+	         	'vars' : ['RIL expression'],
+			 	'desc' : ['LOD']
+	        }
+	     },
+	      {'axisTickFontStyle': 'bold',
+	      'axisTickScaleFontFactor': 1.5,
+	      'axisTitleFontStyle': 'italic',
+	      'axisTitleScaleFontFactor': 1.5,         
+	      'citationFontStyle': 'italic',
+	      'fontStyle': 'italic',
+	      'graphOrientation': 'vertical',
+	      'graphType': 'Bar',
+	      'legendBox': false,
+	      'legendScaleFontFactor': 1.2,
+	      'marginBottom': 30,
+	      'showShadow': true,
+	      'title': search_gene_js,
+	      'titleHeight': 60,
+	      'xAxis2Show': false}
+	    );
+	var cx3 = new CanvasXpress('canvas3',
+		      {		
+		        'y':{
+		        	'smps' : marker_list_js,
+		        	'data' : exp_list_js,
+		         	'vars' : ['Expression'],
+				 	'desc' : ['LOD']
+		        }
+		      },
+		  	     
+		      {'axisTickFontStyle': 'bold',
+		      'axisTickScaleFontFactor': 1.5,
+		      'axisTitleFontStyle': 'italic',
+		      'axisTitleScaleFontFactor': 1.5,         
+		      'citationFontStyle': 'italic',
+		      'fontStyle': 'italic',
+		      'graphOrientation': 'vertical',
+		      'graphType': 'Dotplot',
+		      'legendBox': false,
+		      'legendScaleFontFactor': 1.2,
+		      'marginBottom': 30,
+		      'showShadow': true,
+		      'title': search_gene_js,
+		      'titleHeight': 60,
+		      'xAxis2Show': false
+		      }
+	);
+	
+}
+  var showCode = function (e, id) {
+    var cx = CanvasXpress.getObject(id)
+    cx.stopEvent(e);
+    cx.cancelEvent(e);
+    cx.updateCodeDiv(10000);
+    return false;
+  }
+
+</script>
+  <body onload="showDemo();">   
+  
+  	<p> You are search for {{ search_gene|safe }}</p>
+  	<p> Gene model name: {{ gene.gene_model_name }} </p>
+    <p> Gene model description: {{ gene.gene_model_description }} </p>
+	<p> Gene model type: {{ gene.gene_model_type }} </p>  
+	<p> Primary_gene_symbol {{ gene.primary_gene_symbol }}</p>
+	<p> All_gene_symbols {{ gene.all_gene_symbols }} </p>	
+	<p> Peak marker: {{ peak_marker_js|safe }} </p>
+	<p> Peak expression: {{ peak_lod_js|safe }} </p>
+
+    <div>
+    	<center>
+      		<canvas id='canvas1' width='540' height='540'></canvas>
+      		<canvas id='canvas2' width='540' height='540'></canvas>
+      		<canvas id='canvas3' width='1080' height='540'></canvas>
+      	</center>
+    </div>
+    
+  </body>
+
+
+{% else %}
+	<form action="." method="get">
+		<input id="search_gene" name ="gene" type="text"/>
+		<input type="submit" id="search_submit" value="Search" />
+
+	</form>
+{% endif %}
+
+
+
+
