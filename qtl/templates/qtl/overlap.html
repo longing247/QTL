@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+{% if overlap_traits %}
+	<ul>
+		<li> query_gene: {{ search_gene}} </li>
+		<li> Peak_marker: {{peak_marker}} </li>
+		<li> Peak_lod: {{peak_lod}} </li>
+		{% if lod_thld %}
+			<li> lod_thld: {{lod_thld}} </li>
+		{% endif %}	
+		{% if overlap_traits %}
+			{% for trait in overlap_traits %}
+		 		<li>e-traits:{{ trait.locus_identifier_id}} expression (LOD):{{trait.LOD_score}}</li>
+			{% endfor %}
+		{% endif %}	
+	</ul>
+{% else %}
+	<p>something wrong
+{% endif %}
+
+{% endblock %}
