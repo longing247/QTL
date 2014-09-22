@@ -16,9 +16,11 @@ urlpatterns = patterns('',
     url(r'^marker/success/$',views.upload_success,name='uploadSuccessView'), 
     url(r'^experiment/success/$',views.upload_success,name='uploadSuccessView'), 
     url(r'^parent/success/$',views.upload_success,name='uploadSuccessView'),
+    url(r'^gene/overlap/$',views.searchOverlapQTLView,name='search_overlap'), #/qtl/gene/overlap?lod_threshold=&trait=
     url(r'^gene/$',views.searchGeneView,name='search_gene'),
     url(r'^marker/$',views.searchMarkerView,name='search_marker'),
-    url(r'^index/$',views.indexView,name='index'),
-    url(r'^index/success/$',views.upload_success,name='success'),
+    url(r'^overlap/$',views.searchOverlapQTLView,name='search_qtl'),
+    url(r'^chromosome/$',views.indexView,name='index'),
+    url(r'^chromosome/success/$',views.upload_success,name='success'),
     ) 
 #+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

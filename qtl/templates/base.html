@@ -1,13 +1,39 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 {% load staticfiles %}
 <link rel="stylesheet" href="{% static 'qtl/css/style.css' %}" type="text/css"/>
 
-<title></title>
+<title>Arabidopsis Thaliana QTL database</title>
 </head>
 <body>
+
+<header>
+<h1> <a href="/"> <I>Arabidopsis Thaliana <strong>QTL Database</strong></I></a></h1>
+<nav><ul>
+<li class = "nav_active"> <a href = "#">home</a></li>
+<li><a href = "/qtl/gene/">search gene</a></li>
+<li><a href = "/qtl/marker/">search marker</a></li>
+<li><a href = "/qtl/upload/">upload</a></li>
+<li><a href = "/qtl/overlap/">Overlap</a></li>
+<li><a href = "#">browse</a></li>
+</ul></nav>
+</header> <!-- /#banner -->
+
+
+<div id ="nav">
+<div class = "topbar">
+<div class = "topbar-wrapper">
+<div class = "search-container">
+	
+</div>
+</div>
+</div>
+</div>
+
+
 {% block content %} {% endblock %}
 </body>
 </html>
+

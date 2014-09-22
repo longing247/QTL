@@ -1,5 +1,6 @@
-{% load staticfiles %}
-<link rel="stylesheet" href="{% static 'qtl/css/style.css' %}" type="text/css"/>
+{% extends 'base.html' %}
+
+{% block content %}
 
 {% if marker %}
 
@@ -18,3 +19,4 @@
 
 	</form>
 {% endif %}
+{% endblock %}

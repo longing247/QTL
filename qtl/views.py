@@ -92,6 +92,9 @@ def uploadView(request):
         return render_to_response('qtl/upload.html',args)
 
 def indexView(request):
+    return render_to_response('qtl/index.html',{})
+
+def chromosomeView(request):
     
     chr_dic = {1:'Chr I',2:'Chr II',3:'Chr III', 4:'Chr IV',5:'Chr V'}
     color_list = {1:'Black',2:'Red',3:'Green',4:'blue',5:'cyan',6:'purple'}
@@ -116,58 +119,128 @@ def searchGeneView(request):
     '''
     if request.GET.get('gene'):
         search_gene = request.GET.get('gene')
-        exp_list = Parent.objects.filter(locus_identifier = search_gene)
         gene = Gene.objects.get(locus_identifier = search_gene)
+        exp_list = Parent.objects.filter(locus_identifier = search_gene)
+        
         parent_type_list = []
         expression_list = []
         for exp in exp_list:
             parent_type_list.append(exp.parent_type)
             expression_list.append(exp.expression)
         
-        express_list = [expression_list]
-        
         ril_list = RIL.objects.filter(locus_identifier = search_gene).values('ril_type').annotate(average = Avg('ril_exp'))
-        
         ril_type_list = []
         ril_avg_exp_list = []
         
         for ril in ril_list:
             ril_type_list.append(ril['ril_type'])
             ril_avg_exp_list.append(ril['average'])       
-        
         ril_avg_list = [ril_avg_exp_list]
         
-        peak_marker,peak_lod = findPeak(search_gene)
-        js_search_gene = json.dumps(search_gene)
-        js_parent_type_list = json.dumps(parent_type_list)
-        js_express_list = json.dumps(express_list,cls=DjangoJSONEncoder) 
-        js_ril_type_list = json.dumps(ril_type_list)
-        js_ril_avg_exp_list = json.dumps(ril_avg_list,cls=DjangoJSONEncoder) 
-        peak_marker_js= json.dumps(peak_marker)
-        peak_lod_js = json.dumps(peak_lod,cls=DjangoJSONEncoder)
+        #gene_list,corr_list = mysqlCorrelation(search_gene)
+        #corr_list = mysqlCorrelation(search_gene)
         
         #cor_list = ril_correlation(search_gene)
         #cor_list_js = json.dumps(cor_list)
         
+        peak_marker,peak_lod = findPeak(search_gene)
+        js_search_gene = json.dumps(search_gene)
+        js_parent_type_list = json.dumps(parent_type_list)
+        js_express_list = json.dumps([expression_list],cls=DjangoJSONEncoder) 
+        js_ril_type_list = json.dumps(ril_type_list)
+        js_ril_avg_exp_list = json.dumps(ril_avg_list,cls=DjangoJSONEncoder) 
+        js_peak_marker= json.dumps(peak_marker)
+        js_peak_lod = json.dumps(peak_lod,cls=DjangoJSONEncoder)
+        #js_gene_list = json.dump(gene_list)
+        #js_corr_list = json.dumps(corr_list,cls=DjangoJSONEncoder)
+       
         marker_list,lod_list = marker_plot(search_gene)
         js_marker_list= json.dumps(marker_list)
         js_lod_list = json.dumps([lod_list],cls=DjangoJSONEncoder)
         
-        return render_to_response('qtl/gene.html',{'search_gene':js_search_gene,
-                                                    'gene':gene,
-                                                    'peak_marker_js': peak_marker_js,
-                                                    'peak_lod_js':peak_lod_js,
-                                                    'js_marker_list':js_marker_list,
-                                                    'js_lod_list':js_lod_list,
-                                                    #'cor_list_js':cor_list_js, 
-                                                    'parent_type_list':js_parent_type_list,
-                                                    'express_list': js_express_list,
-                                                    'js_ril_type_list':js_ril_type_list,
-                                                    'js_ril_avg_exp_list':js_ril_avg_exp_list})
+        #it might be helpful to define request.session.set_expiry(value). 
+        request.session['search_gene'] = js_search_gene.encode('ascii','ignore')[1:-1]   
+        request.session['peak_marker'] = js_peak_marker.encode('ascii','ignore')[1:-1]
+        request.session['peak_lod'] = float(js_peak_lod[1:-1]) 
+        return render_to_response('qtl/gene.html',{'search_gene':js_search_gene,#searched gene
+                                                        'gene':gene,#Gene instance returned from database 
+                                                        'peak_marker_js': js_peak_marker, # highest peak marker
+                                                        'peak_lod_js':js_peak_lod,# the lod score of the hightest peak marker
+                                                        'js_marker_list':js_marker_list,# markers along the chromosomes 
+                                                        'js_lod_list':js_lod_list, # the coresponding lod expression value of the searched gene/trait against the marker list. 
+                                                        #'corr_list':corr_list,
+                                                        #'js_gene_list':js_gene_list,
+                                                        #'js_corr_list':js_corr_list,
+                                                        #'cor_list_js':cor_list_js, 
+                                                        'parent_type_list':js_parent_type_list, # parent type 
+                                                        'express_list': js_express_list, # the coresponding expression value in parents of the searched gene
+                                                        'js_ril_type_list':js_ril_type_list, # ril type
+                                                        'js_ril_avg_exp_list':js_ril_avg_exp_list})# the coresponding expression value in rils of the searched gene            
+    else:
+        return render_to_response('qtl/gene.html',{})
+    
+    
+def searchOverlapQTLView(request):
+    '''
+    search candidate overlap gene/expression traits(s) for a query gene/trait.
+    '''
+    
+    if request.session['search_gene'] and request.session['peak_marker'] and request.session['peak_lod']:
+        
+        search_gene = request.session['search_gene']
+        peak_marker = request.session['peak_marker']
+        peak_lod = request.session['peak_lod'] 
+        lod_thld = 2.3
+        target_traits = ''
+        if request.GET.get('trait') and request.GET.get('lod_thld'):       
+            if request.GET.get('lod_thld').strip().isdigit():  
+                lod_thld = request.GET.get('lod_thld').strip()         
+                target_traits = request.GET.get('trait').strip().split(',')
+                overlap_traits = LOD.objects.filter(LOD_score__gte = lod_thld,locus_identifier__in=target_traits,marker_name_id = peak_marker)     
+                return render_to_response('qtl/overlap.html',{'search_gene':search_gene,
+                                                              'peak_marker':peak_marker,
+                                                              'peak_lod':peak_lod,
+                                                              'compare_traits':target_traits,
+                                                              'lod_thld':lod_thld,
+                                                              'overlap_traits': overlap_traits})          
+        elif request.GET.get('trait'):      
+            target_traits = request.GET.get('trait').strip().split(',')
+            overlap_traits = LOD.objects.filter(LOD_score__gte = lod_thld,locus_identifier__in=target_traits,marker_name = peak_marker).order_by('-LOD_score')     
+            return render_to_response('qtl/overlap.html',{'search_gene':search_gene,
+                                                          'peak_marker':peak_marker,
+                                                          'peak_lod':peak_lod,
+                                                          'compare_traits':target_traits,
+                                                          'lod_thld':lod_thld, #default 2.3
+                                                          'overlap_traits': overlap_traits})  
+        
+        elif request.GET.get('lod_thld'):
+            if request.GET.get('lod_thld').strip().isdigit():  
+                lod_thld = request.GET.get('lod_thld').strip()
+            overlap_traits = LOD.objects.filter(LOD_score__gte = lod_thld, marker_name = peak_marker).exclude(locus_identifier = search_gene).order_by('-LOD_score')
+      
+            return render_to_response('qtl/overlap.html',{'search_gene':search_gene,
+                                                          'peak_marker':peak_marker,
+                                                          'peak_lod':peak_lod,
+                                                          'compare_traits':target_traits,#NULL
+                                                          'lod_thld':lod_thld,
+                                                          'overlap_traits': overlap_traits}) 
+        else:
+            # __gte option needs to be placed in the first argument. Attention
+            # tested in manage.py shell
+            # traits = LOD.objects.filter(LOD_score__gte = 2.3, marker_name = 'MSAT318406')      
+            # print overlap+traits gave error: coercing to Unicode: need string or buffer, Gene found   
+            overlap_traits = LOD.objects.filter(LOD_score__gte = lod_thld, marker_name = peak_marker).exclude(locus_identifier = search_gene).order_by('-LOD_score')
+            return render_to_response('qtl/overlap.html',{'search_gene':search_gene,
+                                                          'peak_marker':peak_marker,
+                                                          'peak_lod':peak_lod,
+                                                          'compare_traits':target_traits,#NULL
+                                                          'lod_thld':lod_thld, # default 2.3
+                                                          'overlap_traits': overlap_traits})  
     
     else:
         return render_to_response('qtl/gene.html',{})
     
+
 def searchMarkerView(request):
     '''
     Query for a marker 
@@ -180,6 +253,7 @@ def searchMarkerView(request):
         return render_to_response('qtl/marker.html',context_dict)
     else:
         return render_to_response('qtl/marker.html',{})
+    
 
 def geneUpload(f):    
     '''
@@ -312,11 +386,15 @@ def parentUpload(f):
     print '%d records added' %i
     
 def rilUpload(f):
-    '''
+    '''follow the instuctions in file INSTALL
+
+install mysql-5.5 source files and run
+
+./configure --with-mysql-source=/usr/src/mysql/mysql-5.5
     RIL: 
     locus_identifier = models.ForeignKey(Gene)
     ril_name = models.CharField(max_length=20)
-    ril_type = models.CharField(max_length=20)
+    ril_type = models.CharField(max_len','))gth=20)
     ril_exp = models.DecimalField(max_digits = 25, decimal_places = 15)
     
     Suppose the dataset is like this:
@@ -374,33 +452,12 @@ def findPeak(gene_name):
     exp_list = LOD.objects.filter(locus_identifier = gene_name)    
     if exp_list:
         peak = exp_list[0].LOD_score
-        abs_peak = abs(peak)
         for exp in exp_list:
-            if abs(exp.LOD_score) > abs_peak:
+            if exp.LOD_score > peak:
                 peak = exp.LOD_score
-                abs_peak = abs(peak)
 
         marker = LOD.objects.filter(locus_identifier = gene_name,LOD_score = peak).values('marker_name')[0]['marker_name']   
     return marker,peak
-
-def ril_correlation(query_gene):
-    '''calculate Pearson correlation value of a query gene/qtl against the rest 29000 genes/qtls 
-    '''
-    tic = time.time()
-    gene_list = Gene.objects.values_list('locus_identifier',flat=True) #to retrieve all the genes/qtls
-    #ril_list = RIL.objects.values_list('ril_name',flat = True) #to retrieve the names of RIL offsprings ***too redundant
-    cor_dic ={} 
-    pd_query_gene_exp_series = exp_series(query_gene)  
-    i=0
-    for gene in yield_gene(gene_list):
-        i+=1
-        #pd_target_gene_exp_series = exp_series(ril_list,gene.encode('ascii','ignore'))
-        pd_target_gene_exp_series = exp_series(gene)
-        cor_dic[gene.encode('ascii','ignore')] = pd_query_gene_exp_series.corr(pd_target_gene_exp_series) # calculate correlation of two series
-        print i,cor_dic[gene.encode('ascii','ignore')]
-    toc = time.time()
-    print 'in %f seconds' % (toc-tic)
-    return cor_dic
 
 def yield_gene(gene_list):
     for gene in gene_list:
@@ -430,12 +487,78 @@ def marker_plot(gene_name):
         marker_list.append(marker)
         exp = LOD.objects.get(locus_identifier = gene_name,marker_name = marker).LOD_score
         lod_list.append(float('{0:.2f}'.format(exp)))
-    
+    '''
+    #calculate number of markers in each chromosome.
+    #it is needed for marker plot 
+    chr_marker_list = []
+    for group in Marker.objects.values('marker_chromosome').annotate(chr_group = Count('marker_chromosome')):
+        nr_marker_per_chr={}
+        nr_marker_per_chr[int(group['marker_chromosome'])]= group['chr_group']
+        chr_marker_list.append(nr_marker_per_chr)
+    '''
     return marker_list,lod_list
-    
 
-
+def ril_correlation(query_gene):
+    '''calculate Pearson correlation value of a query gene/qtl against the rest 29000 genes/qtls.
+    It took about 8 mins to finish the entire proecess. 
+    '''
+    tic = time.time()
+    gene_list = Gene.objects.values_list('locus_identifier',flat=True) #to retrieve all the genes/qtls
+    #ril_list = RIL.objects.values_list('ril_name',flat = True) #to retrieve the names of RIL offsprings ***too redundant
+    cor_dic ={} 
+    pd_query_gene_exp_series = exp_series(query_gene)  
+    i=0
+    for gene in yield_gene(gene_list):
+        i+=1
+        #pd_target_gene_exp_series = exp_series(ril_list,gene.encode('ascii','ignore'))
+        pd_target_gene_exp_series = exp_series(gene)
+        cor_dic[gene.encode('ascii','ignore')] = pd_query_gene_exp_series.corr(pd_target_gene_exp_series) # calculate correlation of two series
+        print i,cor_dic[gene.encode('ascii','ignore')]
+    toc = time.time()
+    print 'in %f seconds' % (toc-tic)
+    return cor_dic
     
+def mysqlCorrelation(gene_name):
+    '''
+    calculate pearson correlation coefficient from MySQL server side for a certain query gene.
+    execution time was reduced to 87 sec, but still too long.
+    '''
+    tic = time.time()
+    #the primary key field can not be leaved out.
+    query_script = '''SELECT id, name,
+                ((psum - (sum1 * sum2 / n)) / sqrt((sum1sq - pow(sum1, 2.0) / n) * (sum2sq - pow(sum2, 2.0) / n))) AS r
+                FROM 
+                    (SELECT
+                        target_gene.id AS id,
+                        target_gene.locus_identifier_id AS name,
+                        SUM(query_gene.ril_exp) AS sum1,
+                        SUM(target_gene.ril_exp) AS sum2,
+                        SUM(query_gene.ril_exp * query_gene.ril_exp) AS sum1sq,
+                        SUM(target_gene.ril_exp * target_gene.ril_exp) AS sum2sq,
+                        SUM(query_gene.ril_exp * target_gene.ril_exp) AS psum,
+                        COUNT(*) AS n  
+                    FROM
+                        qtl_ril AS query_gene
+                    LEFT JOIN
+                        qtl_ril AS target_gene
+                    ON
+                        query_gene.ril_name = target_gene.ril_name
+                    WHERE
+                        query_gene.locus_identifier_id = %s AND query_gene.locus_identifier_id <> target_gene.locus_identifier_id
+                    GROUP BY
+                        query_gene.locus_identifier_id, target_gene.locus_identifier_id) AS CORR
+                ORDER BY r DESC
+                '''
+    gene_corr = RIL.objects.raw(query_script,[gene_name])  
+    #gene_list = []
+    #corr_list = []
+    #for gene in gene_corr:
+    #    gene_list.append(gene.name)
+    #    corr_list.append(gene.r)
+    toc = time.time()
+    print 'in %f seconds' % (toc-tic)
+    #return gene_list,corr_list
+    return gene_corr
 ######################################
 # main #
 ######################################

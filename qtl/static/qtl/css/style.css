@@ -1,7 +1,11 @@
 html{
-	background: url("images/at.png") no-repeat center center fixed;
+	background: url("images/flora_and_fauna.jpg") no-repeat center center fixed;
 	-webkit-background-size: cover;
 	-moz-background-size: cover;
 	-o-background-size: cover;
 	background-size: cover;
+}
+
+body{
+	font-family: "Courier New", Courier, "Lucida Sans Typewriter", "Lucida Typewriter", monospace;
 }

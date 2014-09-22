@@ -1,3 +1,7 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
 <form action="/qtl/upload/" method="post" enctype="multipart/form-data" >
 <input name = "genefile" type="file" id="genefile" /> 
 <input type="submit" id="gene_submit" value = "Gene upload" /> <br><br>
@@ -11,3 +15,5 @@
 <input type="submit" id="ril_submit" value = "RIL upload" /> <br><br>
 {% csrf_token %}
 </form>
+
+{% endblock %}
