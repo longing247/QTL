@@ -19,8 +19,7 @@ urlpatterns = patterns('',
     url(r'^gene/overlap/$',views.searchOverlapQTLView,name='search_overlap'), #/qtl/gene/overlap?lod_threshold=&trait=
     url(r'^gene/$',views.searchGeneView,name='search_gene'),
     url(r'^marker/$',views.searchMarkerView,name='search_marker'),
-    url(r'^overlap/$',views.searchOverlapQTLView,name='search_qtl'),
-    url(r'^chromosome/$',views.indexView,name='index'),
+    url(r'^chromosome/$',views.chromosomeView,name='index'),
     url(r'^chromosome/success/$',views.upload_success,name='success'),
     ) 
 #+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

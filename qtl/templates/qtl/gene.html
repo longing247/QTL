@@ -123,15 +123,19 @@ var showDemo = function () {
       		<canvas id='canvas3' width='540' height='540'></canvas>
       	
     </div>
+    <!-- Entire correlation test -->
+    <!--  
     <div style="left:10px;">
-    {% if corr_list %}
+   	{% if js_query_result %}
     	<ul>
-    	{% for corr in corr_list %}
+    	
+    	{% for corr in js_query_result %}
 			<li> {{corr.name}} : {{corr.r}} </li>
 		{% endfor %}
 		</ul>
-	{% endif %}  
+	{% endif %}
   	</div>
+  	-->
   </body>
 
 {% elif overlap_traits_list %}

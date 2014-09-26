@@ -10,6 +10,10 @@ class Gene(models.Model):
     gene_model_type = models.CharField(max_length = 40,blank = True)
     primary_gene_symbol = models.TextField(blank = True)
     all_gene_symbols = models.TextField(blank = True)
+    start = models.IntegerField(blank = True)
+    end = models.IntegerField(blank = True)
+    strand = models.BooleanField(default=False,blank = True) # Django True: sense strand False: anti-sense strand or MySQL 1: sense strand 0: antisense strand
+    
     #tair_accession = models.CharField(max_length=30) #Locus:2025361
     #gene__type = models.CharField(max_length=15) # protein_coding
     #associated_loci = models.TextField()
@@ -52,11 +56,14 @@ class LOD(models.Model):
     
     experiment_name = models.ForeignKey(Experiment)
     LOD_score = models.DecimalField(max_digits = 12, decimal_places = 10)
+    gxe = models.BooleanField(default=False)
     locus_identifier = models.ForeignKey(Gene)
     marker_name = models.ForeignKey(Marker)
     
+    
+    
     def __unicode__(self):
-        return self.locus_identifier
+        return self.LOD_score
     
 class Parent(models.Model):
     
@@ -72,10 +79,39 @@ class RIL(models.Model):
     ril_name = models.CharField(max_length=20)
     ril_type = models.CharField(max_length=20)
     ril_exp = models.DecimalField(max_digits = 25, decimal_places = 15)
-#class RIL(models.Model):
-#    RIL_name = models.CharField(max_length=20)
-#    expression = models.DecimalField(max_digits = 12, decimal_places = 10)
-#    locus_identifier = models.ForeignKey(Gene)
+    def __unicode__(self):
+        return self.ril_name 
+
+class Metabolite(models.Model):
+    metabolite_name = models.CharField(max_length=50,primary_key=True)
+    def __unicode__(self):
+        return self.metabolite_name 
+
+class MParent(models.Model):
+    parent_type = models.CharField(max_length=20)
+    expression = models.DecimalField(max_digits = 25, decimal_places = 15)
+    metabolite_name = models.ForeignKey(Metabolite)
+    def __unicode__(self):
+        return self.parent_type
+
+class MRIL(models.Model):
+    metabolite_name = models.ForeignKey(Metabolite)
+    ril_name = models.CharField(max_length=20)
+    ril_type = models.CharField(max_length=20)
+    ril_exp = models.DecimalField(max_digits = 25, decimal_places = 15)
+    def __unicode__(self):
+        return self.ril_name
+
+class MLOD(models.Model):
+    experiment_name = models.ForeignKey(Experiment)
+    LOD_score = models.DecimalField(max_digits = 12, decimal_places = 10)
+    gxe = models.BooleanField(default=False)
+    metabolite_name = models.ForeignKey(Metabolite)
+    marker_name = models.ForeignKey(Marker)
+    def __unicode__(self):
+        return self.LOD_score
+
+
     
     
 #class GO(models.Model):

@@ -3,6 +3,46 @@
 {% block content %}
 
 {% if overlap_traits %}
+
+{% load staticfiles %}
+<link rel="stylesheet" href="{% static 'qtl/css/canvasXpress.css' %}" type="text/css"/>
+
+<script type="text/javascript" src="{% static 'qtl/js/canvasXpress.min.js' %}"></script>
+
+<script id='demoScript'> 
+var search_gene = {{search_gene|safe}}
+var marker_list = {{marker_list|safe}}
+var traits_list = {{traits_list|safe}}
+var overlap_traits_exp_list = {{overlap_traits_exp_list|safe}}
+
+var showDemo = function () {
+	var cx3 = new CanvasXpress('canvas4',
+		      {		
+		        'y':{
+		        	'smps' : marker_list,
+		        	'data' : overlap_traits_exp_list,
+		         	'vars' : traits_list,
+				 	'desc' : ['LOD']
+		        }
+		      },
+		  	     
+		      {'colorScheme': 'basic',
+		       'graphOrientation': 'vertical',
+		       'graphType': 'Line',
+		       'lineType': 'spline',
+		       'showAnimation': true,
+		       'showShadow': true,
+			   'smpTitle': 'candidate co-regulated genes',
+		       'smpTitleFontStyle': 'italic',
+		       'title': search_gene,
+		       'titleHeight': 80}
+	);
+}
+</script>
+<body onload="showDemo();"> 
+	<div>
+		<canvas id='canvas4' width='1080' height='540'></canvas>
+	</div>
 	<ul>
 		<li> query_gene: {{ search_gene}} </li>
 		<li> Peak_marker: {{peak_marker}} </li>
@@ -16,6 +56,9 @@
 			{% endfor %}
 		{% endif %}	
 	</ul>
+	
+</body>
+
 {% else %}
 	<p>something wrong
 {% endif %}

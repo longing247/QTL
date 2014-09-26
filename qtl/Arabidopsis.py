@@ -17,7 +17,7 @@ class Arabidopsis:
         
         max_len = 30432563 #Could compute this
         telomere_length = 1000000 #For illustration
-        chr_diagram = BasicChromosome.Organism(output_format='jpg')
+        chr_diagram = BasicChromosome.Organism(output_format='pdf')
         #chr_diagram = BasicChromosome.Organism()
         #chr_diagram.page_size = (29.7*cm, 21*cm) #A4 landscape
         #chr_diagram.page_size = (42*cm, 29.7*cm) #A5 landscape
@@ -57,6 +57,6 @@ class Arabidopsis:
             #This chromosome is done
             chr_diagram.add(cur_chromosome)
         
-        chr_diagram.draw("arabidopsis_chrom_marker.jpg", "Arabidopsis thaliana")
+        chr_diagram.draw("arabidopsis_chrom_marker.pdf", "Arabidopsis thaliana")
         #Image("arabidopsis_chrom_marker.png")
             

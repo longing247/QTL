@@ -17,10 +17,11 @@ from django.core.context_processors import csrf
 from django.contrib import messages
 from django.db.models import Count, Avg
 
-from .models import Experiment,Gene,Marker,LOD,Parent,RIL
-from .forms import GeneUploadFileForm,MarkerUploadFileForm, EXPUploadFileForm,ParentUploadFileForm,RILUploadFileForm
+from .models import Experiment,Gene,Marker,LOD,Parent,RIL,Metabolite,MParent,MRIL,MLOD
+from .forms import GeneUploadFileForm,MarkerUploadFileForm, LODUploadFileForm,ParentUploadFileForm,RILUploadFileForm,MetaboliteUploadFileForm,MParentUploadFileForm,MRILUploadFileForm,MLODUploadFileForm,ENVLODUploadFileForm,ENVMLODUploadFileForm,GeneUpdateFileForm
 
 from Arabidopsis import Arabidopsis
+from MySQLCorrelation import mysqlCorrelationAll,mysqlCorrelationSingle
 
 '''
 WUR Seed Lab eQTL expression dataset was used for test purpose. 
@@ -61,9 +62,9 @@ def uploadView(request):
                 messages.error(request,'Error')                  
                 return render_to_response('qtl/upload.html',args)         
         elif request.FILES.get('expfile'):
-            form = EXPUploadFileForm(request.POST, request.FILES)
+            form = LODUploadFileForm(request.POST, request.FILES)
             if form.is_valid():
-                markerUpload(request.FILES.get('expfile'))# 
+                lodUpload(request.FILES.get('expfile'))# 
                 return HttpResponseRedirect('success/')
             else:
                 print 'form is not valid'
@@ -87,7 +88,82 @@ def uploadView(request):
                 print 'form is not valid'
                 messages.error(request,'Error')     
                 return render_to_response('qtl/upload.html',args)
-            
+        elif request.FILES.get('metabolitefile'):
+            form = MetaboliteUploadFileForm(request.POST, request.FILES)
+            if form.is_valid():
+                metaboliteUpload(request.FILES['metabolitefile'])
+                return HttpResponseRedirect('success/')
+            else:
+                print 'form is not valid'
+                messages.error(request,'Error')     
+                return render_to_response('qtl/upload.html',args)
+        elif request.FILES.get('MParentFile'):
+            form = MParentUploadFileForm(request.POST, request.FILES)
+            if form.is_valid():
+                metaboliteParentUpload(request.FILES['MParentFile'])
+                return HttpResponseRedirect('success/')
+            else:
+                print 'form is not valid'
+                messages.error(request,'Error')     
+                return render_to_response('qtl/upload.html',args)   
+        elif request.FILES.get('MRILFile'):
+            form = MRILUploadFileForm(request.POST, request.FILES)
+            if form.is_valid():
+                metaboliteRILUpload(request.FILES['MRILFile'])
+                return HttpResponseRedirect('success/')
+            else:
+                print 'form is not valid'
+                messages.error(request,'Error')     
+                return render_to_response('qtl/upload.html',args)   
+        elif request.FILES.get('MLODFile'):
+            form = MLODUploadFileForm(request.POST, request.FILES)
+            if form.is_valid():
+                metaboliteLODUpload(request.FILES['MLODFile'])
+                return HttpResponseRedirect('success/')
+            else:
+                print 'form is not valid'
+                messages.error(request,'Error')     
+                return render_to_response('qtl/upload.html',args)
+        elif request.FILES.get('envLODFile'):
+            form = ENVLODUploadFileForm(request.POST, request.FILES)
+            if form.is_valid():
+                envLODUpload(request.FILES['envLODFile'])
+                return HttpResponseRedirect('success/')
+            else:
+                print 'form is not valid'
+                messages.error(request,'Error')     
+                return render_to_response('qtl/upload.html',args)           
+        
+        elif request.FILES.get('envMLODFile'):
+            form = ENVMLODUploadFileForm(request.POST, request.FILES)
+            if form.is_valid():
+                envMLODUpload(request.FILES['envMLODFile'])
+                return HttpResponseRedirect('success/')
+            else:
+                print 'form is not valid'
+                messages.error(request,'Error')     
+                return render_to_response('qtl/upload.html',args) 
+        elif request.FILES.get('envMLODFile'):
+            form = ENVMLODUploadFileForm(request.POST, request.FILES)
+            if form.is_valid():
+                envMLODUpload(request.FILES['envMLODFile'])
+                return HttpResponseRedirect('success/')
+            else:
+                print 'form is not valid'
+                messages.error(request,'Error')     
+                return render_to_response('qtl/upload.html',args) 
+        elif request.FILES.get('geneUpDateFile'):
+            form = GeneUpdateFileForm(request.POST, request.FILES)
+            if form.is_valid():
+                geneUpdate(request.FILES['geneUpDateFile'])
+                return HttpResponseRedirect('success/')
+            else:
+                print 'form is not valid'
+                messages.error(request,'Error')     
+                return render_to_response('qtl/upload.html',args) 
+        
+        
+        
     else: # request.method =='GET'
         return render_to_response('qtl/upload.html',args)
 
@@ -137,13 +213,20 @@ def searchGeneView(request):
             ril_avg_exp_list.append(ril['average'])       
         ril_avg_list = [ril_avg_exp_list]
         
-        #gene_list,corr_list = mysqlCorrelation(search_gene)
-        #corr_list = mysqlCorrelation(search_gene)
+        #Entire correlation calculation 
+        query_result = mysqlCorrelationAll(search_gene)
         
+        #Back-end Correlation calculation 
+        #gene_list = []
+        #corr_list = []
+        #for gene in query_result:
+        #    gene_list.append(gene.locus_identifier)
+        #    corr_list.append(gene.LOD_score)
+      
         #cor_list = ril_correlation(search_gene)
         #cor_list_js = json.dumps(cor_list)
-        
-        peak_marker,peak_lod = findPeak(search_gene)
+        gxepression = False
+        peak_marker,peak_lod = findPeak(search_gene,gxepression)
         js_search_gene = json.dumps(search_gene)
         js_parent_type_list = json.dumps(parent_type_list)
         js_express_list = json.dumps([expression_list],cls=DjangoJSONEncoder) 
@@ -151,6 +234,7 @@ def searchGeneView(request):
         js_ril_avg_exp_list = json.dumps(ril_avg_list,cls=DjangoJSONEncoder) 
         js_peak_marker= json.dumps(peak_marker)
         js_peak_lod = json.dumps(peak_lod,cls=DjangoJSONEncoder)
+        
         #js_gene_list = json.dump(gene_list)
         #js_corr_list = json.dumps(corr_list,cls=DjangoJSONEncoder)
        
@@ -168,10 +252,10 @@ def searchGeneView(request):
                                                         'peak_lod_js':js_peak_lod,# the lod score of the hightest peak marker
                                                         'js_marker_list':js_marker_list,# markers along the chromosomes 
                                                         'js_lod_list':js_lod_list, # the coresponding lod expression value of the searched gene/trait against the marker list. 
-                                                        #'corr_list':corr_list,
+                                                        #'cor_list_js':cor_list_js, #calculate correlation between a certain trait and all the other genes.
                                                         #'js_gene_list':js_gene_list,
                                                         #'js_corr_list':js_corr_list,
-                                                        #'cor_list_js':cor_list_js, 
+                                                        #'js_query_result':query_result,                 
                                                         'parent_type_list':js_parent_type_list, # parent type 
                                                         'express_list': js_express_list, # the coresponding expression value in parents of the searched gene
                                                         'js_ril_type_list':js_ril_type_list, # ril type
@@ -192,50 +276,132 @@ def searchOverlapQTLView(request):
         peak_lod = request.session['peak_lod'] 
         lod_thld = 2.3
         target_traits = ''
+        marker_list = []
+        lod_list = []
+        overlap_traits_exp_list = []
+        traits_list = []
+        
         if request.GET.get('trait') and request.GET.get('lod_thld'):       
             if request.GET.get('lod_thld').strip().isdigit():  
                 lod_thld = request.GET.get('lod_thld').strip()         
                 target_traits = request.GET.get('trait').strip().split(',')
-                overlap_traits = LOD.objects.filter(LOD_score__gte = lod_thld,locus_identifier__in=target_traits,marker_name_id = peak_marker)     
-                return render_to_response('qtl/overlap.html',{'search_gene':search_gene,
-                                                              'peak_marker':peak_marker,
-                                                              'peak_lod':peak_lod,
-                                                              'compare_traits':target_traits,
-                                                              'lod_thld':lod_thld,
-                                                              'overlap_traits': overlap_traits})          
+                overlap_traits = LOD.objects.filter(LOD_score__gte = lod_thld,locus_identifier__in=target_traits,marker_name_id = peak_marker)
+                for trait in overlap_traits:
+                    marker_list,lod_list = marker_plot(trait.locus_identifier)
+                    traits_list.append(trait.locus_identifier.locus_identifier)
+                    overlap_traits_exp_list.append(lod_list) 
+                
+                # unicode needs to be converted again, avoiding of coercing to Unicode: need string or buffer, Gene found error
+                js_search_gene = json.dumps(search_gene)
+                js_peak_marker = json.dumps(peak_marker)
+                js_peak_lod = json.dumps(peak_lod,cls=DjangoJSONEncoder) 
+                js_target_traits = json.dumps(target_traits)
+                js_lod_thld = json.dumps(lod_thld,cls=DjangoJSONEncoder)
+                js_marker_list = json.dumps(marker_list)
+                js_traits_list = json.dumps(traits_list)
+                js_overlap_traits_exp_list = json.dumps(overlap_traits_exp_list,cls=DjangoJSONEncoder)  
+                
+                return render_to_response('qtl/overlap.html',{'search_gene':js_search_gene,
+                                                              'peak_marker':js_peak_marker,# request.session
+                                                              'peak_lod':js_peak_lod,# request.session
+                                                              'compare_traits':js_target_traits,#NULL
+                                                              'lod_thld':lod_thld, # default 2.3
+                                                              'overlap_traits': overlap_traits,
+                                                              'marker_list':js_marker_list,# marker
+                                                              'traits_list':js_traits_list, # traits
+                                                              'overlap_traits_exp_list':js_overlap_traits_exp_list # expression 
+                                                          })          
         elif request.GET.get('trait'):      
             target_traits = request.GET.get('trait').strip().split(',')
-            overlap_traits = LOD.objects.filter(LOD_score__gte = lod_thld,locus_identifier__in=target_traits,marker_name = peak_marker).order_by('-LOD_score')     
-            return render_to_response('qtl/overlap.html',{'search_gene':search_gene,
-                                                          'peak_marker':peak_marker,
-                                                          'peak_lod':peak_lod,
-                                                          'compare_traits':target_traits,
-                                                          'lod_thld':lod_thld, #default 2.3
-                                                          'overlap_traits': overlap_traits})  
+            overlap_traits = LOD.objects.filter(LOD_score__gte = lod_thld,locus_identifier__in=target_traits,marker_name = peak_marker).order_by('-LOD_score')
+            for trait in overlap_traits:
+                marker_list,lod_list = marker_plot(trait.locus_identifier) 
+                traits_list.append(trait.locus_identifier.locus_identifier)
+                overlap_traits_exp_list.append(lod_list)
+            
+            js_search_gene = json.dumps(search_gene)
+            js_peak_marker = json.dumps(peak_marker)
+            js_peak_lod = json.dumps(peak_lod,cls=DjangoJSONEncoder) 
+            js_target_traits = json.dumps(target_traits)
+            js_lod_thld = json.dumps(lod_thld,cls=DjangoJSONEncoder)
+            js_marker_list = json.dumps(marker_list)
+            js_traits_list = json.dumps(traits_list)
+            js_overlap_traits_exp_list = json.dumps(overlap_traits_exp_list,cls=DjangoJSONEncoder)     
+            return render_to_response('qtl/overlap.html',{'search_gene':js_search_gene,
+                                                              'peak_marker':js_peak_marker,# request.session
+                                                              'peak_lod':js_peak_lod,# request.session
+                                                              'compare_traits':js_target_traits,#NULL
+                                                              'lod_thld':lod_thld, # default 2.3
+                                                              'overlap_traits': overlap_traits,
+                                                              'marker_list':js_marker_list,# marker
+                                                              'traits_list':js_traits_list, # traits
+                                                              'overlap_traits_exp_list':js_overlap_traits_exp_list # expression 
+                                                          })  
         
         elif request.GET.get('lod_thld'):
+            
             if request.GET.get('lod_thld').strip().isdigit():  
                 lod_thld = request.GET.get('lod_thld').strip()
             overlap_traits = LOD.objects.filter(LOD_score__gte = lod_thld, marker_name = peak_marker).exclude(locus_identifier = search_gene).order_by('-LOD_score')
-      
-            return render_to_response('qtl/overlap.html',{'search_gene':search_gene,
-                                                          'peak_marker':peak_marker,
-                                                          'peak_lod':peak_lod,
-                                                          'compare_traits':target_traits,#NULL
-                                                          'lod_thld':lod_thld,
-                                                          'overlap_traits': overlap_traits}) 
+            counter = 1 # default: present the expression value of the top 5 co-regulated traits along the chromosome in the same figure
+            for trait in overlap_traits:
+                if counter <=5:
+                    counter+=1
+                    marker_list,lod_list = marker_plot(trait.locus_identifier)
+                    traits_list.append(trait.locus_identifier.locus_identifier)
+                    overlap_traits_exp_list.append(lod_list)
+            js_search_gene = json.dumps(search_gene)
+            js_peak_marker = json.dumps(peak_marker)
+            js_peak_lod = json.dumps(peak_lod,cls=DjangoJSONEncoder) 
+            js_target_traits = json.dumps(target_traits)
+            js_lod_thld = json.dumps(lod_thld,cls=DjangoJSONEncoder)
+            js_marker_list = json.dumps(marker_list)
+            js_traits_list = json.dumps(traits_list)
+            js_overlap_traits_exp_list = json.dumps(overlap_traits_exp_list,cls=DjangoJSONEncoder)   
+            return render_to_response('qtl/overlap.html',{'search_gene':js_search_gene,
+                                                          'peak_marker':js_peak_marker,# request.session
+                                                          'peak_lod':js_peak_lod,# request.session
+                                                          'compare_traits':js_target_traits,#NULL
+                                                          'lod_thld':lod_thld, # default 2.3
+                                                          'overlap_traits': overlap_traits,
+                                                          'marker_list':js_marker_list,# marker
+                                                          'traits_list':js_traits_list, # traits
+                                                          'overlap_traits_exp_list':js_overlap_traits_exp_list # expression 
+                                                          }) 
         else:
             # __gte option needs to be placed in the first argument. Attention
             # tested in manage.py shell
             # traits = LOD.objects.filter(LOD_score__gte = 2.3, marker_name = 'MSAT318406')      
             # print overlap+traits gave error: coercing to Unicode: need string or buffer, Gene found   
             overlap_traits = LOD.objects.filter(LOD_score__gte = lod_thld, marker_name = peak_marker).exclude(locus_identifier = search_gene).order_by('-LOD_score')
-            return render_to_response('qtl/overlap.html',{'search_gene':search_gene,
-                                                          'peak_marker':peak_marker,
-                                                          'peak_lod':peak_lod,
-                                                          'compare_traits':target_traits,#NULL
+            
+            counter = 1 # default: present the expression value of the top 5 co-regulated traits along the chromosome in the same figure
+            for trait in overlap_traits:
+                if counter <=5:
+                    counter+=1
+                    marker_list,lod_list = marker_plot(trait.locus_identifier)
+                    traits_list.append(trait.locus_identifier.locus_identifier)
+                    overlap_traits_exp_list.append(lod_list)
+            
+            js_search_gene = json.dumps(search_gene)
+            js_peak_marker = json.dumps(peak_marker)
+            js_peak_lod = json.dumps(peak_lod,cls=DjangoJSONEncoder) 
+            js_target_traits = json.dumps(target_traits)
+            js_lod_thld = json.dumps(lod_thld,cls=DjangoJSONEncoder)
+            js_marker_list = json.dumps(marker_list)
+            js_traits_list = json.dumps(traits_list)
+            js_overlap_traits_exp_list = json.dumps(overlap_traits_exp_list,cls=DjangoJSONEncoder)   
+                
+            return render_to_response('qtl/overlap.html',{'search_gene':js_search_gene,
+                                                          'peak_marker':js_peak_marker,# request.session
+                                                          'peak_lod':js_peak_lod,# request.session
+                                                          'compare_traits':js_target_traits,#NULL
                                                           'lod_thld':lod_thld, # default 2.3
-                                                          'overlap_traits': overlap_traits})  
+                                                          'overlap_traits': overlap_traits,
+                                                          'marker_list':js_marker_list,# marker
+                                                          'traits_list':js_traits_list, # traits
+                                                          'overlap_traits_exp_list':js_overlap_traits_exp_list # expression 
+                                                          })  
     
     else:
         return render_to_response('qtl/gene.html',{})
@@ -287,6 +453,7 @@ def geneUpload(f):
     toc = time.clock()
     print 'in %f seconds' % (toc-tic)
     print '%d records added' %i
+    
 
 def markerUpload(f):
     '''
@@ -314,7 +481,7 @@ def markerUpload(f):
     toc = time.clock()
     print 'in %f seconds' % (toc-tic)
     print '%d records added' %i
-def expUpload(f):   
+def lodUpload(f):   
     '''
     Experiment: 
     experiment_name=models.CharField(max_length=50,primary_key=True)
@@ -386,11 +553,7 @@ def parentUpload(f):
     print '%d records added' %i
     
 def rilUpload(f):
-    '''follow the instuctions in file INSTALL
-
-install mysql-5.5 source files and run
-
-./configure --with-mysql-source=/usr/src/mysql/mysql-5.5
+    '''
     RIL: 
     locus_identifier = models.ForeignKey(Gene)
     ril_name = models.CharField(max_length=20)
@@ -436,6 +599,33 @@ def getAll(f,arg1,arg2):
                     continue
             print line[0]
             print '%d records added' % i
+            
+def getAllMetabolite(f,arg1,arg2):
+    li1 = []
+    li2 = []
+    i = 0
+    for line in getData(f):
+        if arg1 in line[0]:
+            print 'RIL type'
+            for obj in range(1,len(line)):
+                li1.append(line[obj])
+        elif arg2 in line[0]:
+            print 'RIL name'
+            for obj in range(1,len(line)):
+                li2.append(line[obj])        
+        else:  
+            i+=1    
+            for exp in range(1,len(line)):
+                if line[exp]: 
+                    add_ril = MRIL(ril_name = li2[exp-1],
+                                  ril_type = li1[exp-1],
+                                  ril_exp = line[exp],
+                                  metabolite_name = Metabolite.objects.get(pk= line[0]))
+                    add_ril.save()
+                else:
+                    continue
+            print line[0]
+            print '%d records added' % i
     
 def getData(f):
     csv_reader = csv.reader(f,delimiter='\t')
@@ -446,10 +636,213 @@ def getData(f):
 def upload_success(request):
     return render_to_response('qtl/success.html')
 
-def findPeak(gene_name):
-    '''find the peak marker and expression value
+def metaboliteUpload(f):
     '''
-    exp_list = LOD.objects.filter(locus_identifier = gene_name)    
+    class metabolite model
+    metabolite_name = models.CharField(max_length=50,primary_key=True)
+    '''
+    tic = time.clock()
+    i=0
+    for line in getData(f):
+        if 'metabolitesID' in line[0]:
+            continue
+        else:
+            i+=1
+            add_metabolite = Metabolite()
+            add_metabolite.metabolite_name = line[0]
+            
+
+    toc = time.clock()
+    print 'in %f seconds' % (toc-tic)
+    print '%d records added' %i
+    
+def metaboliteParentUpload(f):   
+    '''
+    class MParent model
+    parent_type = models.CharField(max_length=20)
+    expression = models.DecimalField(max_digits = 25, decimal_places = 15)
+    metabolite_name = models.ForeignKey(Metabolite)
+    '''
+    tic = time.clock()   
+    parent_list = []  
+    i=0
+    for line in getData(f):
+        if 'Parents' in line[0]:
+            for parent in range(1,len(line)):
+                parent_list.append(line[parent])
+                print line[parent]
+        else:
+            i+=1
+            print i
+            for exp in range(1,len(line)):
+                if line[exp] == '':        #js_exp_list = simplejson.dumps(exp_list)
+                    continue                 
+                else:
+                    add_parent = MParent(parent_type =  parent_list[exp-1],
+                                        expression =  line[exp],
+                                        metabolite_name = Metabolite.objects.get(pk= line[0]))
+                    add_parent.save()
+    toc = time.clock()            
+    print 'in %f seconds' % (toc-tic)
+    print '%d records added' %i
+    
+def metaboliteRILUpload(f): 
+    '''    
+    class MRIL model
+    metabolite_name = models.ForeignKey(Metabolite)
+    ril_name = models.CharField(max_length=20)
+    ril_type = models.CharField(max_length=20)
+    ril_exp = models.DecimalField(max_digits = 25, decimal_places = 15)
+    '''
+    tic = time.time()   
+    getAllMetabolite(f,'RIL_type','metabolites')
+    toc = time.time()            
+    print 'in %f seconds' % (toc-tic)
+    
+
+def metaboliteLODUpload(f):
+    '''
+    class Experiment: 
+    experiment_name=models.CharField(max_length=50,primary_key=True)
+    
+    class MLOD model
+    experiment_name = models.ForeignKey(Experiment)
+    LOD_score = models.DecimalField(max_digits = 12, decimal_places = 10)
+    gxe = models.BooleanField(default=False)
+    metabolite_name = models.ForeignKey(Metabolite)
+    marker_name = models.ForeignKey(Marker)
+    
+    NEED to be approved: Occurred: Segmentation fault (core dumped) because of insufficient memory
+    After saving 10839 records
+    Solution:,index
+    delete from qtl_lod where locus_identifier_id = 'AT2G36270';
+    split the data set from that row into another one.
+    Anyhow this part of function needs to be optimized by either using mmap or generator.
+    '''
+    tic = time.clock()   
+    add_exp = Experiment()
+    add_exp.experiment_name = f.name
+    add_exp.save()
+    marker_list = []  
+    i=0
+    for line in getData(f):
+        if 'QTL' in line[0]:
+            for marker in range(1,len(line)):
+                print line[marker]
+                marker_list.append(line[marker])
+        else:
+            i+=1
+            print i
+            for gene in range(1,len(line)):
+                add_mlod = MLOD(experiment_name = Experiment.objects.get(pk=f.name),
+                              metabolite_name = Metabolite.objects.get(pk= line[0]),
+                              marker_name =  Marker.objects.get(pk=marker_list[gene-1]),
+                              LOD_score =  line[gene])
+                add_mlod.save()
+    toc = time.clock()            
+    print 'in %f seconds' % (toc-tic)
+    print '%d records added' %i
+    
+def envLODUpload(f):   
+    '''
+    Experiment: 
+    experiment_name=models.CharField(max_length=50,primary_key=True)
+    
+    LOD:
+    experiment_name = models.ForeignKey(Experiment)
+    LOD_score = models.DecimalField(max_digits = 12, decimal_places = 10)
+    gene_name = models.ForeignKey(Gene)
+    marker_name = models.ForeignKey(Marker)
+    
+    Occurred: Segmentation fault (core dumped) because of insufficient memory
+    After saving 10839 records
+    Solution:,index
+    delete from qtl_lod where locus_identifier_id = 'AT2G36270';
+    split the data set from that row into another one.
+    Anyhow this part of function needs to be optimized by either using mmap or generator.
+    
+    Segmentation fault (core dumped)
+    1st stop at 10532 AT2G33390
+    2nd stop at 10591 AT4G26170
+
+    '''
+    tic = time.clock()   
+    add_exp = Experiment()
+    add_exp.experiment_name = f.name
+    add_exp.save()
+    marker_list = []  
+    i=0
+    for line in getData(f):
+        if 'QTLEnv' in line[0]:
+            for marker in range(1,len(line)):
+                print line[marker]
+                marker_list.append(line[marker])
+        else:
+            i+=1
+            print i
+            print line[0]
+            for gene in range(1,len(line)):
+                add_lod = LOD(experiment_name = Experiment.objects.get(pk=f.name),
+                              locus_identifier = Gene.objects.get(pk= line[0]),
+                              marker_name =  Marker.objects.get(pk=marker_list[gene-1]),
+                              gxe = True,
+                              LOD_score =  line[gene])
+                add_lod.save()    
+    toc = time.clock()            
+    print 'in %f seconds' % (toc-tic)
+    print '%d records added' %i    
+
+def envMLODUpload(f):                
+    '''
+    Experiment: 
+    experiment_name=models.CharField(max_length=50,primary_key=True)
+    
+    class MLOD model
+    experiment_name = models.ForeignKey(Experiment)
+    LOD_score = models.DecimalField(max_digits = 12, decimal_places = 10)
+    gxe = models.BooleanField(default=False)
+    metabolite_name = models.ForeignKey(Metabolite)
+    marker_name = models.ForeignKey(Marker)
+    
+    Occurred: Segmentation fault (core dumped) because of insufficient memory
+    After saving 10839 records
+    Solution:,index
+    delete from qtl_lod where locus_identifier_id = 'AT2G36270';
+    split the data set from that row into another one.
+    Anyhow this part of function needs to be optimized by either using mmap or generator.
+    '''
+    tic = time.clock()   
+    add_exp = Experiment()
+    add_exp.experiment_name = f.name
+    add_exp.save()
+    marker_list = []  
+    i=0
+    for line in getData(f):
+        if 'QTLEnv' in line[0]:
+            for marker in range(1,len(line)):
+                print line[marker]
+                marker_list.append(line[marker])
+        else:
+            i+=1
+            print i
+            print line[0]
+            for meta in range(1,len(line)):
+                add_lod = MLOD(experiment_name = Experiment.objects.get(pk=f.name),
+                              metabolite_name = Metabolite.objects.get(pk= line[0]),
+                              marker_name =  Marker.objects.get(pk=marker_list[meta-1]),
+                              gxe = True,
+                              LOD_score =  line[meta])
+                add_lod.save()    
+    toc = time.clock()            
+    print 'in %f seconds' % (toc-tic)
+    print '%d records added' %i    
+
+
+def findPeak(gene_name,gexpression):
+    '''find the peak marker and expression value
+    argument2 gexpression refers LOD.gxe(BooleanField: Ture or False in Django, 1 or 0 in MySQL) enviorment interaction. 
+    '''
+    exp_list = LOD.objects.filter(locus_identifier = gene_name,gxe= gexpression)    
     if exp_list:
         peak = exp_list[0].LOD_score
         for exp in exp_list:
@@ -485,7 +878,7 @@ def marker_plot(gene_name):
     marker_list = []
     for marker in Marker.objects.values_list('marker_name',flat=True).order_by('marker_chromosome','marker_cm'):
         marker_list.append(marker)
-        exp = LOD.objects.get(locus_identifier = gene_name,marker_name = marker).LOD_score
+        exp = LOD.objects.get(locus_identifier = gene_name,marker_name = marker,gxe=False).LOD_score
         lod_list.append(float('{0:.2f}'.format(exp)))
     '''
     #calculate number of markers in each chromosome.
@@ -517,48 +910,31 @@ def ril_correlation(query_gene):
     toc = time.time()
     print 'in %f seconds' % (toc-tic)
     return cor_dic
-    
-def mysqlCorrelation(gene_name):
+
+def geneUpdate(f):
     '''
-    calculate pearson correlation coefficient from MySQL server side for a certain query gene.
-    execution time was reduced to 87 sec, but still too long.
-    '''
-    tic = time.time()
-    #the primary key field can not be leaved out.
-    query_script = '''SELECT id, name,
-                ((psum - (sum1 * sum2 / n)) / sqrt((sum1sq - pow(sum1, 2.0) / n) * (sum2sq - pow(sum2, 2.0) / n))) AS r
-                FROM 
-                    (SELECT
-                        target_gene.id AS id,
-                        target_gene.locus_identifier_id AS name,
-                        SUM(query_gene.ril_exp) AS sum1,
-                        SUM(target_gene.ril_exp) AS sum2,
-                        SUM(query_gene.ril_exp * query_gene.ril_exp) AS sum1sq,
-                        SUM(target_gene.ril_exp * target_gene.ril_exp) AS sum2sq,
-                        SUM(query_gene.ril_exp * target_gene.ril_exp) AS psum,
-                        COUNT(*) AS n  
-                    FROM
-                        qtl_ril AS query_gene
-                    LEFT JOIN
-                        qtl_ril AS target_gene
-                    ON
-                        query_gene.ril_name = target_gene.ril_name
-                    WHERE
-                        query_gene.locus_identifier_id = %s AND query_gene.locus_identifier_id <> target_gene.locus_identifier_id
-                    GROUP BY
-                        query_gene.locus_identifier_id, target_gene.locus_identifier_id) AS CORR
-                ORDER BY r DESC
-                '''
-    gene_corr = RIL.objects.raw(query_script,[gene_name])  
-    #gene_list = []
-    #corr_list = []
-    #for gene in gene_corr:
-    #    gene_list.append(gene.name)
-    #    corr_list.append(gene.r)
-    toc = time.time()
-    print 'in %f seconds' % (toc-tic)
-    #return gene_list,corr_list
-    return gene_corr
+    Updating gene chromosome location to the database and writing the mismatched genes into a file named missing.txt
+    '''   
+    with open('missing.txt', 'a') as save_file:
+        
+        for line in getData(f):
+            if 'AT' in line[0]:
+                print line[0],line[1],line[2],line[3],type(line[3])
+                if Gene.objects.filter(locus_identifier = line[0]).exists():
+                    gene = Gene.objects.get(locus_identifier = line[0])
+                    gene.start = line[1]
+                    gene.end = line[2]
+                    if '1' in line[3]:
+                        gene.strand = True
+                    elif '0' in line[3]:
+                        gene.strand = False
+                    else:
+                        print 'WRONG'
+                    gene.save()
+                else:
+                    save_file.write(line[0]+'\n')
+        save_file.close()
+            
 ######################################
 # main #
 ######################################

@@ -4,46 +4,39 @@ Created on Jul 30, 2014
 @author: jiao
 '''
 from django import forms
-from .models import Parent
 
 class GeneUploadFileForm(forms.Form):
-    '''
-    classdocs
-    '''
-    #title = forms.CharField(max_length=50)
-    #file = forms.FileField()
     genefile = forms.FileField()
 
 class MarkerUploadFileForm(forms.Form):
-    '''
-    classdocs
-    '''
-    #title = forms.CharField(max_length=50)
-    #file = forms.FileField()
     markerfile = forms.FileField()
     
-class EXPUploadFileForm(forms.Form):
-    '''
-    classdocs
-    '''
-    #title = forms.CharField(max_length=50)
-    #file = forms.FileField()
+class LODUploadFileForm(forms.Form):
     expfile = forms.FileField()
 
 class ParentUploadFileForm(forms.Form):
-    '''
-    classdocs
-    '''
-    #title = forms.CharField(max_length=50)
-    #file = forms.FileField()
     parentfile = forms.FileField()
     
 class RILUploadFileForm(forms.Form):
-    '''
-    classdocs
-    '''
-    #title = forms.CharField(max_length=50)
-    #file = forms.FileField()
     rilfile = forms.FileField()
 
+class MetaboliteUploadFileForm(forms.Form):
+    metabolitefile = forms.FileField()
+    
+class MParentUploadFileForm(forms.Form):
+    MParentFile = forms.FileField()
 
+class MRILUploadFileForm(forms.Form):
+    MRILFile = forms.FileField()
+
+class MLODUploadFileForm(forms.Form):
+    MLODFile = forms.FileField()
+
+class ENVLODUploadFileForm(forms.Form):
+    envLODFile = forms.FileField()
+    
+class ENVMLODUploadFileForm(forms.Form):
+    envMLODFile = forms.FileField()
+    
+class GeneUpdateFileForm(forms.Form):    
+    geneUpDateFile = forms.FileField()
