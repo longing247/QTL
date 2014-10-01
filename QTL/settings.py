@@ -36,7 +36,7 @@ INSTALLED_APPS = (
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'haystack',# added for the search module
+    #'haystack',# added for the search module
     'qtl',
     
 )

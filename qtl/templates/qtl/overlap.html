@@ -3,8 +3,10 @@
 {% block content %}
 
 {% if overlap_traits %}
-
+{% load extra_templatetag_corr %}
 {% load staticfiles %}
+
+
 <link rel="stylesheet" href="{% static 'qtl/css/canvasXpress.css' %}" type="text/css"/>
 
 <script type="text/javascript" src="{% static 'qtl/js/canvasXpress.min.js' %}"></script>
@@ -52,7 +54,7 @@ var showDemo = function () {
 		{% endif %}	
 		{% if overlap_traits %}
 			{% for trait in overlap_traits %}
-		 		<li>e-traits:{{ trait.locus_identifier_id}} expression (LOD):{{trait.LOD_score}}</li>
+		 		<li>e-traits:{{ trait.locus_identifier_id}}, expression (LOD):{{trait.LOD_score}}, Pearson correlation: {{corr|get_key:trait.locus_identifier_id }} </li>
 			{% endfor %}
 		{% endif %}	
 	</ul>

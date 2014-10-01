@@ -12,11 +12,14 @@
 <script id='demoScript'> 
 var parent_type_list_js = {{ parent_type_list|safe }};
 var expression_list_js = {{ express_list|safe }};
-var ril_type_list_js = {{ js_ril_type_list|safe }}
-var ril_exp_list_js = {{ js_ril_avg_exp_list|safe }}
+var ril_type_list_js = {{ js_ril_type_list|safe }};
+var ril_exp_list_js = {{ js_ril_avg_exp_list|safe }};
 var search_gene_js = {{ search_gene|safe }};
-var marker_list_js = {{js_marker_list|safe}}
-var exp_list_js = {{js_lod_list|safe}}
+var marker_list_js = {{js_marker_list|safe}};
+var exp_list_js = {{js_lod_list|safe}};
+var marker_env_list_js = {{js_marker_env_list|safe}};
+var exp_env_list_js = {{js_lod_env_list|safe}};
+var exp_all_list_js = {{js_lod_all_list|safe}};
 var showDemo = function () {
     var cx1 = new CanvasXpress('canvas1',
       {
@@ -66,13 +69,68 @@ var showDemo = function () {
 	      'title': search_gene_js,
 	      'titleHeight': 60,
 	      'xAxis2Show': false}
-	    );
+	);
 	var cx3 = new CanvasXpress('canvas3',
 		      {		
 		        'y':{
 		        	'smps' : marker_list_js,
 		        	'data' : exp_list_js,
-		         	'vars' : ['Expression'],
+		         	'vars' : ['LOD G'],
+				 	'desc' : ['LOD G']
+		        }
+		      },
+		  	     
+		      {'axisTickFontStyle': 'bold',
+		      'axisTickScaleFontFactor': 1.5,
+		      'axisTitleFontStyle': 'italic',
+		      'axisTitleScaleFontFactor': 1.5,         
+		      'citationFontStyle': 'italic',
+		      'fontStyle': 'italic',
+		      'graphOrientation': 'vertical',
+		      'graphType': 'Dotplot',
+		      'legendBox': false,
+		      'legendScaleFontFactor': 1.2,
+		      'marginBottom': 30,
+		      'showShadow': true,
+		      'title': search_gene_js,
+		      'titleHeight': 60,
+		      'xAxis2Show': false
+		      }
+	);
+	//cx3.drawLine('dashed',18,18,613,613,'rgb(0,255,255)',10,'butt');
+	var cx4 = new CanvasXpress('canvas4',
+		      {		
+		        'y':{
+		        	'smps' : marker_env_list_js,
+		        	'data' : exp_env_list_js,
+		         	'vars' : ['LOD GxE'],
+				 	'desc' : ['LOD GxE']
+		        }
+		      },
+		  	     
+		      {'axisTickFontStyle': 'bold',
+		      'axisTickScaleFontFactor': 1.5,
+		      'axisTitleFontStyle': 'italic',
+		      'axisTitleScaleFontFactor': 1.5,         
+		      'citationFontStyle': 'italic',
+		      'fontStyle': 'italic',
+		      'graphOrientation': 'vertical',
+		      'graphType': 'Dotplot',
+		      'legendBox': false,
+		      'legendScaleFontFactor': 1.2,
+		      'marginBottom': 30,
+		      'showShadow': true,
+		      'title': search_gene_js,
+		      'titleHeight': 60,
+		      'xAxis2Show': false
+		      }
+	);
+	var cx5 = new CanvasXpress('canvas5',
+		      {		
+		        'y':{
+		        	'smps' : marker_list_js,
+		        	'data' : exp_all_list_js,
+		         	'vars' : ['LOD G','LOD GxE'],
 				 	'desc' : ['LOD']
 		        }
 		      },
@@ -94,8 +152,6 @@ var showDemo = function () {
 		      'xAxis2Show': false
 		      }
 	);
-	cx3.drawLine('dashed',18,18,613,613,'rgb(0,255,255)',10,'butt');
-	
 }
 
 </script>
@@ -111,17 +167,28 @@ var showDemo = function () {
 	  	<li> Gene model name: {{ gene.gene_model_name }} </li>
 	    <li> Gene model description: {{ gene.gene_model_description }} </li>
 		<li> Gene model type: {{ gene.gene_model_type }} </li>  
+		{% if gene.strand %}
+		<li> Gene coordinates: {{ gene.start }}-{{ gene.end }} Orientation: Forward </li>
+		{% else %}
+		<li> Gene coordinates: {{ gene.start }}-{{ gene.end }} Orientation: Reverse </li> 
+		{% endif %} 
 		<li> Primary_gene_symbol {{ gene.primary_gene_symbol }}</li>
 		<li> All_gene_symbols {{ gene.all_gene_symbols }} </li>	
+		<li> Peak expression: {{ peak_lod_js|safe }} </li>
+		<li> Peak expression: {{ peak_lod_js|safe }} </li>
 		<li> Peak marker: {{ peak_marker_js|safe }} </li>
 		<li> Peak expression: {{ peak_lod_js|safe }} </li>
+		<li> GxE peak marker: {{ js_peak_marker_env|safe }} </li>
+		<li> GxE Peak expression: {{ js_peak_lod_env|safe }} </li>
+		
 	</ul>
     <div>
     	
       		<canvas id='canvas1' width='540' height='540'></canvas>
       		<canvas id='canvas2' width='540' height='540'></canvas>
-      		<canvas id='canvas3' width='540' height='540'></canvas>
-      	
+      		<canvas id='canvas3' width='1080' height='540'></canvas>
+      		<canvas id='canvas4' width='1080' height='540'></canvas>
+      		<canvas id='canvas5' width='1080' height='540'></canvas>
     </div>
     <!-- Entire correlation test -->
     <!--  
