@@ -4,6 +4,9 @@ from Bio.Graphics import BasicChromosome
 class Arabidopsis:
     
     
+    def __init__(self,f):
+        self.f_name =f
+    
     def draw(self,features_list):
     #The features can either be SeqFeature objects, or tuples of values:
     #start (int), end (int), strand (+1, -1, O or None), label (string),
@@ -19,9 +22,9 @@ class Arabidopsis:
         telomere_length = 1000000 #For illustration
         chr_diagram = BasicChromosome.Organism(output_format='pdf')
         #chr_diagram = BasicChromosome.Organism()
-        #chr_diagram.page_size = (29.7*cm, 21*cm) #A4 landscape
+        chr_diagram.page_size = (29.7*cm, 21*cm) #A4 landscape
         #chr_diagram.page_size = (42*cm, 29.7*cm) #A5 landscape
-        chr_diagram.page_size = (59.4*cm, 42*cm) #A5 landscape
+        #chr_diagram.page_size = (59.4*cm, 42*cm) #A5 landscape
         for index, (name, length) in enumerate(entries):
             features = features_list[name] 
             
@@ -57,6 +60,6 @@ class Arabidopsis:
             #This chromosome is done
             chr_diagram.add(cur_chromosome)
         
-        chr_diagram.draw("arabidopsis_chrom_marker.pdf", "Arabidopsis thaliana")
+        chr_diagram.draw("qtl/static/qtl/temp/"+self.f_name, "Arabidopsis thaliana chromosome")
         #Image("arabidopsis_chrom_marker.png")
             

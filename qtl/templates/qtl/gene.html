@@ -176,7 +176,7 @@ var showDemo = function () {
 		<li> All_gene_symbols {{ gene.all_gene_symbols }} </li>	
 		<li> Peak expression: {{ peak_lod_js|safe }} </li>
 		<li> Peak expression: {{ peak_lod_js|safe }} </li>
-		<li> Peak marker: {{ peak_marker_js|safe }} </li>
+		<li> Peak marker: <a href ="chromosome">{{ peak_marker_js|safe }}</a> [hint: click the peak marker link to see the location on the chromosome] </li>
 		<li> Peak expression: {{ peak_lod_js|safe }} </li>
 		<li> GxE peak marker: {{ js_peak_marker_env|safe }} </li>
 		<li> GxE Peak expression: {{ js_peak_lod_env|safe }} </li>

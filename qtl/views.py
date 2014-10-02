@@ -4,7 +4,7 @@ import csv
 import json
 import pandas as pd
 import logging
-
+from datetime import datetime
 
 from django.core.serializers.json import DjangoJSONEncoder
 from django.shortcuts import render,get_object_or_404,render_to_response
@@ -171,20 +171,43 @@ def indexView(request):
     return render_to_response('qtl/index.html',{})
 
 def chromosomeView(request):
-    
+    search_gene = request.session['search_gene']
+    #marker_list = request.session['marker_list'] 
+    lod_list = request.session['js_lod_list_session'][1:-1].split(" ")
+        
     chr_dic = {1:'Chr I',2:'Chr II',3:'Chr III', 4:'Chr IV',5:'Chr V'}
-    color_list = {1:'Black',2:'Red',3:'Green',4:'blue',5:'cyan',6:'purple'}
+    color_list = {1:'black',2:'blue',3:'Green',4:'purple',5:'cyan',6:'red'}
     features_list = {}
+    j = 0
     for i in range(1,6):
         li = []
-        marker_list = Marker.objects.filter(marker_chromosome = i)
+        marker_list = Marker.objects.filter(marker_chromosome = i).order_by('marker_cm')
         for markers in marker_list:
-            t = int(markers.marker_phys_pos*1000000), (int(markers.marker_phys_pos*1000000)+100),None,markers.marker_name.encode('ascii','ignore'),color_list[i+1]
+            if float(lod_list[j]) <-3:
+                t = int(markers.marker_phys_pos*1000000), (int(markers.marker_phys_pos*1000000)+100),None,markers.marker_name.encode('ascii','ignore'),color_list[1]
+            elif float(lod_list[j]) >=-3 and float(lod_list[j]) <0:
+                t = int(markers.marker_phys_pos*1000000), (int(markers.marker_phys_pos*1000000)+100),None,markers.marker_name.encode('ascii','ignore'),color_list[2]
+            elif float(lod_list[j]) >= 0 and float(lod_list[j]) <3:
+                t = int(markers.marker_phys_pos*1000000), (int(markers.marker_phys_pos*1000000)+100),None,markers.marker_name.encode('ascii','ignore'),color_list[3]
+            elif float(lod_list[j]) >=3 and float(lod_list[j]) < 5:
+                t = int(markers.marker_phys_pos*1000000), (int(markers.marker_phys_pos*1000000)+100),None,markers.marker_name.encode('ascii','ignore'),color_list[4]
+            elif float(lod_list[j]) >=5 and float(lod_list[j]) <10:
+                t = int(markers.marker_phys_pos*1000000), (int(markers.marker_phys_pos*1000000)+100),None,markers.marker_name.encode('ascii','ignore'),color_list[5]
+            else:
+                t = int(markers.marker_phys_pos*1000000), (int(markers.marker_phys_pos*1000000)+100),None,markers.marker_name.encode('ascii','ignore'),color_list[6]
+            
             li.append(t)
-        features_list[chr_dic[i]] = li    
-    at = Arabidopsis()
+            j+=1
+        features_list[chr_dic[i]] = li
+    now = datetime.now()
+    f_name = str(now).replace(' ','').replace(':','').replace('-','').replace('.','')+'.pdf' 
+    at = Arabidopsis(f_name)
     at.draw(features_list)
-    return HttpResponseRedirect('success/')
+    pdf_name = 'qtl/temp/'+at.f_name
+    
+    #args: 
+    return render_to_response('qtl/chromosome.html',{'pdf_name':pdf_name
+                                                     })
 
 
 def searchGeneView(request):
@@ -202,7 +225,7 @@ def searchGeneView(request):
         expression_list = []
         for exp in exp_list:
             parent_type_list.append(exp.parent_type)
-            expression_list.append(exp.expression)
+            expression_list.append(decimalFormat(exp.expression))
         
         ril_list = RIL.objects.filter(locus_identifier = search_gene).values('ril_type').annotate(average = Avg('ril_exp'))
         ril_type_list = []
@@ -210,7 +233,7 @@ def searchGeneView(request):
         
         for ril in ril_list:
             ril_type_list.append(ril['ril_type'])
-            ril_avg_exp_list.append(ril['average'])       
+            ril_avg_exp_list.append(decimalFormat(ril['average']))       
         ril_avg_list = [ril_avg_exp_list]
         
         #Entire correlation calculation 
@@ -233,12 +256,13 @@ def searchGeneView(request):
         js_ril_type_list = json.dumps(ril_type_list)
         js_ril_avg_exp_list = json.dumps(ril_avg_list,cls=DjangoJSONEncoder) 
         js_peak_marker= json.dumps(peak_marker)
-        js_peak_lod = json.dumps(peak_lod,cls=DjangoJSONEncoder)
+        js_peak_lod = json.dumps(decimalFormat(peak_lod),cls=DjangoJSONEncoder)
         
         #js_gene_list = json.dump(gene_list)
         #js_corr_list = json.dumps(corr_list,cls=DjangoJSONEncoder)        
         marker_list,lod_list = marker_plot(search_gene,gxe_)
         js_marker_list= json.dumps(marker_list)
+        js_lod_list_session = json.dumps(lod_list,cls=DjangoJSONEncoder)
         js_lod_list = json.dumps([lod_list],cls=DjangoJSONEncoder)
         
         gxe_env = True
@@ -254,7 +278,12 @@ def searchGeneView(request):
         #it might be helpful to define request.session.set_expiry(value). 
         request.session['search_gene'] = js_search_gene.encode('ascii','ignore')[1:-1]   
         request.session['peak_marker'] = js_peak_marker.encode('ascii','ignore')[1:-1]
-        request.session['peak_lod'] = float(js_peak_lod[1:-1]) 
+        request.session['peak_lod'] = js_peak_lod
+        #request.session['marker_list'] = js_marker_list
+        lod_str =  ''
+        for lod in lod_list:
+            lod_str +=' '+str(lod)
+        request.session['js_lod_list_session'] = json.dumps(lod_str[1:],cls=DjangoJSONEncoder)
         return render_to_response('qtl/gene.html',{'search_gene':js_search_gene,#searched gene
                                                         'gene':gene,#Gene instance returned from database 
                                                         'peak_marker_js': js_peak_marker, # highest peak marker
@@ -1083,6 +1112,9 @@ def geneUpdate(f):
                 else:
                     save_file.write(line[0]+'\n')
         save_file.close()
+        
+def decimalFormat(number):
+    return float('{0:.2f}'.format(number))
             
 ######################################
 # main #
