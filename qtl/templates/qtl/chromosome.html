@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block content %}
+{% load staticfiles %}
+<script type="text/javascript" src="{% static 'qtl/js/pdf/util.js' %}"></script>
+<script type="text/javascript" src="{% static 'qtl/js/pdf/api.js' %}"></script>
+<script type="text/javascript" src="{% static 'qtl/js/pdf/metadata.js' %}"></script>
+<script type="text/javascript" src="{% static 'qtl/js/pdf/canvas.js' %}"></script>
+<script type="text/javascript" src="{% static 'qtl/js/pdf/webgl.js' %}"></script>
+<script type="text/javascript" src="{% static 'qtl/js/pdf/pattern_helper.js' %}"></script>
+<script type="text/javascript" src="{% static 'qtl/js/pdf/font_loader.js' %}"></script>
+<script type="text/javascript" src="{% static 'qtl/js/pdf/annotation_helper.js' %}"></script>
+<script>
+PDFJS.workerSrc = "{% static 'qtl/js/pdf/worker_loader.js' %}";
+</script>
+<script>
+/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+/* vim: set shiftwidth=2 tabstop=2 autoindent cindent expandtab: */
+
+'use strict';
+
+//
+// Fetch the PDF document from the URL using promises
+//
+<!--PDFJS.getDocument("{% static 'qtl/js/2014102300010101000000.pdf' %}").then(function(pdf) {-->
+PDFJS.getDocument("{% static pdf_name %}").then(function(pdf) {
+  // Using promise to fetch the page
+  pdf.getPage(1).then(function(page) {
+    var scale = 1;
+    var viewport = page.getViewport(scale);
+    //
+    // Prepare canvas using PDF page dimensions
+    //
+    var canvas = document.getElementById('the-canvas');
+    var context = canvas.getContext('2d');
+    canvas.height = viewport.height;
+    canvas.width = viewport.width;
+
+    //
+    // Render PDF page into canvas context
+    //
+    var renderContext = {
+      canvasContext: context,
+      viewport: viewport
+    };
+    page.render(renderContext);
+  });
+});
+</script>
+
+  <canvas id="the-canvas" style="border:1px solid black;"></canvas>
+  <div id = "lod_color">
+  <p> color_list = {1:'Black',2:'blue',3:'Green',4:'purple',5:'cyan',6:'red'}</p>
+  <p> LOD < -3 : 'black' </p>
+  <p> -3 <= LOD < 0 : 'blue' </p>
+  <p> 0 <= LOD < 3: 'Green' </p>
+  <p> 3 <= LOD < 5: 'purple' </p>
+  <p> 5 <= LOD < 10 : 'cyan' </p>
+  <p> 5 <= LOD: 'red' </p>
+  </div>
+
+{% endblock %}
+
