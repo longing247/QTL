@@ -15,14 +15,15 @@ from django.views.generic import FormView
 from django.conf import settings 
 from django.core.context_processors import csrf
 from django.contrib import messages
-from django.db.models import Count, Avg
+from django.db.models import Count, Avg, Q
+from django.core.serializers import serialize
 
-from .models import Experiment,Gene,Marker,LOD,Parent,RIL,Metabolite,MParent,MRIL,MLOD
-from .forms import GeneUploadFileForm,MarkerUploadFileForm, LODUploadFileForm,ParentUploadFileForm,RILUploadFileForm,MetaboliteUploadFileForm,MParentUploadFileForm,MRILUploadFileForm,MLODUploadFileForm,ENVLODUploadFileForm,ENVMLODUploadFileForm,GeneUpdateFileForm
+from .models import Experiment,Gene,Marker,LOD,Parent,RIL,Metabolite,MParent,MRIL,MLOD,Genotype
+from .forms import GeneUploadFileForm,MarkerUploadFileForm, LODUploadFileForm,ParentUploadFileForm,RILUploadFileForm,MetaboliteUploadFileForm,MParentUploadFileForm,MRILUploadFileForm,MLODUploadFileForm,ENVLODUploadFileForm,ENVMLODUploadFileForm,GeneUpdateFileForm,GenotypeUploadFileForm
 
 from Arabidopsis import Arabidopsis
 from MySQLCorrelation import mysqlCorrelationAll,mysqlCorrelationSingle
-
+#from OutputJson import outputJson
 '''
 WUR Seed Lab eQTL expression dataset was used for test purpose. 
 The derived files: gene_test.txt, marker_test.txt, lod_test.txt, and etc are all from the original datadataset.
@@ -161,7 +162,15 @@ def uploadView(request):
                 print 'form is not valid'
                 messages.error(request,'Error')     
                 return render_to_response('qtl/upload.html',args) 
-        
+        elif request.FILES.get('genotypeFile'):
+            form = GenotypeUploadFileForm(request.POST, request.FILES)
+            if form.is_valid():
+                genotypeUpload(request.FILES['genotypeFile'])
+                return HttpResponseRedirect('success/')
+            else:
+                print 'form is not valid'
+                messages.error(request,'Error')     
+                return render_to_response('qtl/upload.html',args) 
         
         
     else: # request.method =='GET'
@@ -485,7 +494,7 @@ def searchMetaboliteView(request):
             ril_type_list.append(ril['ril_type'])
             ril_avg_exp_list.append(ril['average'])       
         ril_avg_list = [ril_avg_exp_list]
-        
+        0
         #Entire correlation calculation 
         #query_result = mysqlCorrelationAll(search_gene)
         
@@ -526,13 +535,13 @@ def searchMetaboliteView(request):
         
         #it might be helpful to define request.session.set_expiry(value). 
         request.session['search_metabolite'] = js_search_metabolite.encode('ascii','ignore')[1:-1]   
-        request.session['peak_marker'] = js_peak_marker.encode('ascii','ignore')[1:-1]
+        request.session['peak_marker'] = js_peak_marker.encoeQTL_lod_thldde('ascii','ignore')[1:-1]
         request.session['peak_lod'] = float(js_peak_lod[1:-1]) 
         return render_to_response('qtl/metabolite.html',{'search_metabolite':js_search_metabolite,#searched metabolite
                                                         'metabolite':metabolite,#Metabolite instance returned from database 
                                                         'peak_marker_js': js_peak_marker, # highest peak marker
                                                         'peak_lod_js':js_peak_lod,# the LOD score of the highest peak marker
-                                                        'js_marker_list':js_marker_list,# markers along the chromosome 
+                                                        'LODjs_marker_list':js_marker_list,# markers along the chromosome 
                                                         'js_lod_list':js_lod_list, # the corresponding LOD expression value of the searched gene/trait against the marker list. 
                                                         #'cor_list_js':cor_list_js, #calculate correlation between a certain trait and all the other genes.
                                                         #'js_gene_list':js_gene_list,
@@ -561,7 +570,132 @@ def searchMarkerView(request):
         return render_to_response('qtl/marker.html',context_dict)
     else:
         return render_to_response('qtl/marker.html',{})
+
+def missingGene():
+    '''
+    forget this. made some changes manually
+    '''
+    miss_genes = Gene.objects.filter(start__isnull=True)
+    j=0
+    for gene in miss_genes:
+        prefix = gene.locus_identifier.encode('ascii','ignore').strip()[:-3]
+        suffix = int(gene.locus_identifier.encode('ascii','ignore').strip()[-3:])
+        print gene.locus_identifier 
+        for i in range(200):
+            k=1
+            suf = suffix-i-1
+            next_gene = prefix+str(suf)
+            if Gene.objects.filter(locus_identifier = next_gene).count() ==1:
+                next_=Gene.objects.get(locus_identifier = next_gene)
+                if not next_.start:
+                    k+=1
+                    continue
+                else:
+                    g = Gene.objects.get(locus_identifier = gene.locus_identifier)
+                    g.start = next_.end+(300*k)
+                    g.end = next_.end+(600*k)
+                    g.strand = next_.strand
+                    g.save()
+                    break
     
+def eQTLPlotView(request):
+    '''
+    plot eQTL maping
+    
+    '''
+    if request.session['search_gene']:
+        lod_thld = 2.3
+        if request.GET.get('eQTL_lod_thld'):
+            lod_thld = float(request.GET.get('eQTL_lod_thld'))
+        search_gene = request.session['search_gene']
+        # output_dic will be used to generate JSON file.
+        output_dic = {}
+        chr_nr = 5
+        #define KEY chrnames
+        # alternative way if it is used to another organism
+        # for efficiency: define it derectly, or comment the following line
+        # chr_size = Marker.objects.values('marker_chromosome').dictinct().count() # and use chr_size to generate ['1','2','3','4','5']
+        output_dic['chrnames']= ['1','2','3','4','5']
+        
+        # define KEY chr
+        # it can be also achieved by calling
+        # chr_start = Gene.objects.filter('chromosome'=1).orderby('start')[0].values('start') etc...
+        output_dic['chr'] = {'1': {'start_Mbp': 0.003631,'end_Mbp': 30.425192},
+                             '2': {'start_Mbp': 0.001871,'end_Mbp': 19.696821},
+                             '3': {'start_Mbp': 0.004342,'end_Mbp': 23.459800},
+                             '4': {'start_Mbp': 0.001180,'end_Mbp': 18.584524},
+                             '5': {'start_Mbp': 0.001251,'end_Mbp': 26.970641}}
+        
+        # define KEY pmarknames
+        chr_marker_list_dic = {}
+        for i in range(chr_nr):
+            chr_marker_list_dic[i+1] = list(getChrMarkers(i+1))  #django.db.models.query.ValuesListQuerySet    
+        output_dic['pmarknames'] = chr_marker_list_dic
+        
+        # define KEY markers
+        output_dic['markers'] = list(getMarkersList())
+        
+        # define KEY pmark
+        marker_list_dic = {}
+        marker_list = Marker.objects.all()
+        for m in marker_list:
+            m_info ={'chr':m.marker_chromosome,'pos_cM':float(m.marker_cm),'pos_Mbp':float(m.marker_phys_pos)}
+            marker_list_dic[m.marker_name] = m_info
+        output_dic['pmark'] = marker_list_dic
+        
+        # define KEY gene
+        gene_list_dic = {}
+        gene_queryset_list = Gene.objects.all().order_by('chromosome','start')
+        for gene in gene_queryset_list:     
+            gene_list_dic[gene.locus_identifier]={'chr':gene.chromosome,'pos_Mbp':float(gene.start)/1000000} 
+        output_dic['gene'] = gene_list_dic
+        
+        # define KEY peaks
+        #sha_lod_thld = -lod_thld
+        peaks_list = []
+        lod_list = LOD.objects.filter(LOD_score__gte= lod_thld,gxe = False)
+        for lod in lod_list:
+            lod_={}
+            lod_['gene'] = lod.locus_identifier.locus_identifier
+            lod_['marker'] = lod.marker_name.marker_name#.encode('ascii','ignore')
+            lod_['lod'] = float(lod.LOD_score)
+            
+            peaks_list.append(lod_)
+        output_dic['peaks'] = peaks_list
+        
+        # define KEY exp
+        exp_list = []
+        exp_ = LOD.objects.filter(locus_identifier = search_gene,gxe=False)
+        for exp in exp_:
+            exp_dic = {}
+            exp_dic['gene'] = exp.locus_identifier.locus_identifier
+            exp_dic['marker'] = exp.marker_name.marker_name#.encode('ascii','ignore')
+            exp_dic['lod'] = float(exp.LOD_score)
+            exp_list.append(exp_dic)
+        output_dic['exp'] = exp_list    
+        output_dic_js = json.dumps(output_dic)
+        search_gene = json.dumps(search_gene)
+        return render_to_response('qtl/eQTL.html',{'output_dic_js':output_dic_js,
+                                                   'search_gene': search_gene})
+    
+    else:
+        return render_to_response('qtl/gene.html',{})
+
+
+def getMarkersList():
+    '''
+    return all the markers.
+    '''
+    
+    return Marker.objects.all().order_by('marker_chromosome','marker_cm').values_list('marker_name', flat = True)
+
+def getChrMarkers(chr_name):
+    '''
+    return all the markers along on the chr_name.
+    '''
+    
+    return Marker.objects.filter(marker_chromosome = chr_name).order_by('marker_cm').values_list('marker_name',flat=True)
+
 
 def geneUpload(f):    
     '''
@@ -1032,7 +1166,8 @@ def marker_plot(gene_name,gxe_):
     '''
     lod_list = []
     marker_list = []
-    for marker in Marker.objects.values_list('marker_name',flat=True).order_by('marker_chromosome','marker_cm'):
+    marker_query_list_set = Marker.objects.values_list('marker_name',flat=True).order_by('marker_chromosome','marker_cm')
+    for marker in marker_query_list_set:
         marker_list.append(marker)
         exp = LOD.objects.get(locus_identifier = gene_name,marker_name = marker,gxe=gxe_).LOD_score
         lod_list.append(float('{0:.2f}'.format(exp)))
@@ -1115,6 +1250,38 @@ def geneUpdate(f):
         
 def decimalFormat(number):
     return float('{0:.2f}'.format(number))
+
+def genotypeUpload(f):
+    
+    '''
+    class Genotype: 
+    marker_name = models.ForeignKey(Marker)
+    ril_name= models.ForeignKey(RIL)
+    genotype = models.CharField(max_length=5)
+    Function: add the genotype of certain genomic marker location of a RIL population
+    Comment: Unfortunately because of the previously defined data strucute and consideration of data redundency, Genotype has only one relationship to Marker (many to one)
+    Data integrity: Because the expression value of gene/trait in offspring RIL90 is missing, therefore the genotype of each marker in RIL90 will not be considered.   
+    '''
+    tic = time.clock()   
+    
+    ril_list = []
+    i=0
+    for line in getData(f):
+        if 'Genotype' in line[0]:
+            for ril in range(1,len(line)):
+                print line[ril]
+                ril_list.append(line[ril])
+        else:
+            i+=1
+            print i
+            for marker in range(1,len(line)):
+                add_geno = Genotype(marker_name = Marker.objects.get(pk=line[0]),
+                              ril_name =  ril_list[marker-1],
+                              genotype =  line[marker])
+                add_geno.save()
+    toc = time.clock()            
+    print 'in %f seconds' % (toc-tic)
+    print '%d records added' %i
             
 ######################################
 # main #

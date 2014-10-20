@@ -40,3 +40,6 @@ class ENVMLODUploadFileForm(forms.Form):
     
 class GeneUpdateFileForm(forms.Form):    
     geneUpDateFile = forms.FileField()
+    
+class GenotypeUploadFileForm(forms.Form):    
+    genotypeFile = forms.FileField()

@@ -48,7 +48,7 @@ PDFJS.getDocument("{% static pdf_name %}").then(function(pdf) {
 </script>
 
   <canvas id="the-canvas" style="border:1px solid black;"></canvas>
-  <div id = "lod_color">
+  <div id = "lod_color">  
   <p> color_list = {1:'Black',2:'blue',3:'Green',4:'purple',5:'cyan',6:'red'}</p>
   <p> LOD < -3 : 'black' </p>
   <p> -3 <= LOD < 0 : 'blue' </p>
@@ -56,6 +56,7 @@ PDFJS.getDocument("{% static pdf_name %}").then(function(pdf) {
   <p> 3 <= LOD < 5: 'purple' </p>
   <p> 5 <= LOD < 10 : 'cyan' </p>
   <p> 5 <= LOD: 'red' </p>
+
   </div>
 
 {% endblock %}

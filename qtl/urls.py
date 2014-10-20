@@ -21,6 +21,8 @@ urlpatterns = patterns('',
     url(r'^marker/$',views.searchMarkerView,name='search_marker'),
     url(r'^metabolite/$',views.searchMetaboliteView,name='search_metabolite'),
     url(r'^gene/chromosome/$',views.chromosomeView,name='chromosome'),
+    url(r'^gene/eQTLPlot/$',views.eQTLPlotView,name='eQTL'),
     url(r'^chromosome/success/$',views.upload_success,name='success'),
+
     ) 
 #+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

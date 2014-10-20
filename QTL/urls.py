@@ -12,7 +12,7 @@ urlpatterns = patterns('',
 
     url(r'^admin/', include(admin.site.urls)),
     url(r'^qtl/', include('qtl.urls')),
-    url(r'^$', views.indexView,name='index'),
+    #url(r'^$', views.indexView,name='index'),
 #    url(r'^qtl/',views.qtlView,name='qtlView'),
     url(r'^search/', include('haystack.urls')), 
     

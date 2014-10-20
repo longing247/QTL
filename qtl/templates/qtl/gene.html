@@ -175,13 +175,20 @@ var showDemo = function () {
 		<li> Primary_gene_symbol {{ gene.primary_gene_symbol }}</li>
 		<li> All_gene_symbols {{ gene.all_gene_symbols }} </li>	
 		<li> Peak expression: {{ peak_lod_js|safe }} </li>
-		<li> Peak expression: {{ peak_lod_js|safe }} </li>
 		<li> Peak marker: <a href ="chromosome">{{ peak_marker_js|safe }}</a> [hint: click the peak marker link to see the location on the chromosome] </li>
 		<li> Peak expression: {{ peak_lod_js|safe }} </li>
 		<li> GxE peak marker: {{ js_peak_marker_env|safe }} </li>
 		<li> GxE Peak expression: {{ js_peak_lod_env|safe }} </li>
 		
 	</ul>
+	<div id="eQTL">
+	<p>eQTL plot</p>
+	<form action="eQTLPlot" method="get">
+		Enter threshold (optional):<input id="eQTL_lod_threshold" name ="eQTL_lod_thld" type="text"/> (Default threshold is set to 2.3 if you leave it blank) </br>
+		<input type="submit" id="search" value="generate eQTL plot"/></br>
+	</form>
+	
+	</div>
     <div>
     	
       		<canvas id='canvas1' width='540' height='540'></canvas>
