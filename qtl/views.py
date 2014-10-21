@@ -4,6 +4,7 @@ import csv
 import json
 import pandas as pd
 import logging
+import math
 from datetime import datetime
 
 from django.core.serializers.json import DjangoJSONEncoder
@@ -494,7 +495,6 @@ def searchMetaboliteView(request):
             ril_type_list.append(ril['ril_type'])
             ril_avg_exp_list.append(ril['average'])       
         ril_avg_list = [ril_avg_exp_list]
-        0
         #Entire correlation calculation 
         #query_result = mysqlCorrelationAll(search_gene)
         
@@ -653,13 +653,22 @@ def eQTLPlotView(request):
         # define KEY peaks
         #sha_lod_thld = -lod_thld
         peaks_list = []
-        lod_list = LOD.objects.filter(LOD_score__gte= lod_thld,gxe = False)
-        for lod in lod_list:
+        neg_lod_thld = -lod_thld
+        lod_bay_list = LOD.objects.filter(LOD_score__gte= lod_thld,gxe = False)
+        lod_sha_list = LOD.objects.filter(LOD_score__lte = neg_lod_thld, gxe = False)
+        for lod in lod_bay_list:
             lod_={}
             lod_['gene'] = lod.locus_identifier.locus_identifier
             lod_['marker'] = lod.marker_name.marker_name#.encode('ascii','ignore')
-            lod_['lod'] = float(lod.LOD_score)
-            
+            lod_['lod'] = float(lod.LOD_score) 
+            lod_['p'] = 'Bay'      
+            peaks_list.append(lod_)
+        for lod in lod_sha_list:
+            lod_={}
+            lod_['gene'] = lod.locus_identifier.locus_identifier
+            lod_['marker'] = lod.marker_name.marker_name#.encode('ascii','ignore')
+            lod_['lod'] = math.fabs(float(lod.LOD_score))
+            lod_['p'] = 'Sha'       
             peaks_list.append(lod_)
         output_dic['peaks'] = peaks_list
         

@@ -85,7 +85,6 @@ href="https://github.com/kbroman/d3examples/tree/master/cistrans">github</a>.
     pink = "hotpink";
     altpink = "#E9CFEC";
     purple = "#8C4374";
-    chinared ="FF1010";
     darkred = "crimson";
     labelcolor = "black";
     titlecolor = "blue";
@@ -401,12 +400,21 @@ href="https://github.com/kbroman/d3examples/tree/master/cistrans">github</a>.
 	    return chrXScale[data.pmark[d.marker].chr](data.pmark[d.marker].pos_Mbp);
       }).attr("cy", function(d) {
         return chrYScale[data.gene[d.gene].chr](data.gene[d.gene].pos_Mbp);
-      }).attr("r", peakRad).attr("stroke", "none").attr("fill", function(d) {    	
+      }).attr("r", peakRad).attr("stroke", "none").attr("fill", function(d) {  
+    	  if (d.p=='Bay'){
         	if (chrindex[data.pmark[d.marker].chr] % 2 === 0) {
           		return darkblue;
        		} else {
           		return darkgreen;
        		}
+    	  }
+    	  if (d.p=='Sha'){
+        	if (chrindex[data.pmark[d.marker].chr] % 2 === 0) {
+          		return darkred;
+       		} else {
+          		return darkred;
+       		}
+    	  }  
       }).attr("opacity", function(d) {
         return Zscale(d.lod);
       }).on("mouseover", function(d) {
@@ -414,11 +422,20 @@ href="https://github.com/kbroman/d3examples/tree/master/cistrans">github</a>.
         return eqtltip.call(this, d);
       }).on("mouseout", function(d) {
         d3.selectAll("circle.probe_" + d.gene).attr("r", peakRad).attr("fill", function(d) {
-          if (chrindex[data.pmark[d.marker].chr] % 2 === 0) {
-            return darkblue;
-          } else {
-            return darkgreen;
-          }
+        	if (d.p=='Bay'){
+            	if (chrindex[data.pmark[d.marker].chr] % 2 === 0) {
+              		return darkblue;
+           		} else {
+              		return darkgreen;
+           		}
+        	  }
+        	  if (d.p=='Sha'){
+            	if (chrindex[data.pmark[d.marker].chr] % 2 === 0) {
+              		return darkred;
+           		} else {
+              		return darkred;
+           		}
+        	  }  
         }).attr("stroke", "none").attr("opacity", function(d) {
           return Zscale(d.lod);
         });
