@@ -5,6 +5,7 @@ import json
 import pandas as pd
 import logging
 import math
+import itertools
 from datetime import datetime
 
 from django.core.serializers.json import DjangoJSONEncoder
@@ -573,10 +574,10 @@ def searchMarkerView(request):
 
 def missingGene():
     '''
-    forget this. made some changes manually
+    fills up physical position of genes which are not given in TAIR9-genes with position.xlsx with fake data.
+    The missing gene profile was saved in the parent directory named missing.txt.
     '''
     miss_genes = Gene.objects.filter(start__isnull=True)
-    j=0
     for gene in miss_genes:
         prefix = gene.locus_identifier.encode('ascii','ignore').strip()[:-3]
         suffix = int(gene.locus_identifier.encode('ascii','ignore').strip()[-3:])
@@ -670,7 +671,13 @@ def eQTLPlotView(request):
             lod_['lod'] = math.fabs(float(lod.LOD_score))
             lod_['p'] = 'Sha'       
             peaks_list.append(lod_)
+
+        nr_eQTL = len(peaks_list)#number of dectected eQTL
+    
         output_dic['peaks'] = peaks_list
+        peaks_gene_list = [g.next() for k,g in itertools.groupby(peaks_list,lambda x:x['gene'])] 
+        nr_gene = len(peaks_gene_list) # number of genes that the expression are likely to be regulated by eQTL
+        pv = math.pow(10,-lod_thld)
         
         # define KEY exp
         exp_list = []
@@ -685,7 +692,13 @@ def eQTLPlotView(request):
         output_dic_js = json.dumps(output_dic)
         search_gene = json.dumps(search_gene)
         return render_to_response('qtl/eQTL.html',{'output_dic_js':output_dic_js,
-                                                   'search_gene': search_gene})
+                                                   'search_gene': search_gene,
+                                                   'lod_thld': lod_thld,
+                                                   'nr_eQTL':nr_eQTL,
+                                                   'nr_gene':nr_gene,
+                                                   'p':pv,
+                                                   'peaks_list':peaks_list,
+                                                   'peaks_gene_list':peaks_gene_list})
     
     else:
         return render_to_response('qtl/gene.html',{})
@@ -1291,7 +1304,10 @@ def genotypeUpload(f):
     toc = time.clock()            
     print 'in %f seconds' % (toc-tic)
     print '%d records added' %i
-            
+
+
+    
+    
 ######################################
 # main #
 ######################################

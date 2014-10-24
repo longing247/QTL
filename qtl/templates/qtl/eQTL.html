@@ -15,7 +15,18 @@
 <script type="text/javascript" src="{% static 'qtl/js/d3.tip.old.js' %}"></script>
 
 
-<h3>Interactive cis-trans eQTL plot</h3>
+<div> 
+<p> eQTL mapping resulted in {{ nr_eQTL }} eQTLs detected for {{ nr_gene }} genes cut-off: {{ lod_thld }} based on the -log of p value, corresponding to a p value of {{ p }} </p>
+</div>
+<form action="." method="get">
+<table>
+{% if peaks_list %}
+	{% for peak in peaks_list %}
+		<tr><td><input type="checkbox" /></td> <td>{{ peak.gene }}</td><td>{{peak.marker}}</td><td>{{peak.p}}</td><td>{{peak.lod}}</td></tr>
+	{% endfor %}
+{% endif %}
+</table>
+</form>
 
 <p id="loading">[Loading...]</p>
 
@@ -26,15 +37,16 @@
 <p> This interactive eQTL map ploting is adopted from D3 samples project of Karl Broman who made the R/qtl package with some changes.  
 
 <p>In the top cis-/trans- eQTL map panel, the x-axis corresponds to marker location
-and the y-axis corresponds to the genomic position of a gene. Each plotted point is an inferred eQTL with LOD entered in the previous page; opacity corresponds to LOD score, though all LOD > 25 are made
+and the y-axis corresponds to the genomic position of a gene. Each plotted point is an inferred eQTL with LOD entered in the previous page.
+
+<p>Blue plotted points stands for the gene expression in Bay parent is higher than Sha parent; opacity corresponds to LOD score, though all LOD > 25 are made
 fully opaque.
 
-<p>Hover over a point to see the gene and LOD score; 
+<p>In the eQTL map plot, blue Hover over a point to see the gene and LOD score; 
 
 <p>The title in lower panel is a link to the Ensemel website
 
-<p>The original code is available at <a
-href="https://github.com/kbroman/d3examples/tree/master/cistrans">github</a>.
+<p>The original code is available at <a href="https://github.com/kbroman/d3examples/tree/master/cistrans">github</a>.
 </div>
 
 <script type="text/javascript">
@@ -405,16 +417,17 @@ href="https://github.com/kbroman/d3examples/tree/master/cistrans">github</a>.
         	if (chrindex[data.pmark[d.marker].chr] % 2 === 0) {
           		return darkblue;
        		} else {
-          		return darkgreen;
+          		return darkblue;
        		}
     	  }
+    	  
     	  if (d.p=='Sha'){
         	if (chrindex[data.pmark[d.marker].chr] % 2 === 0) {
           		return darkred;
        		} else {
           		return darkred;
        		}
-    	  }  
+    	  } 
       }).attr("opacity", function(d) {
         return Zscale(d.lod);
       }).on("mouseover", function(d) {
@@ -423,19 +436,12 @@ href="https://github.com/kbroman/d3examples/tree/master/cistrans">github</a>.
       }).on("mouseout", function(d) {
         d3.selectAll("circle.probe_" + d.gene).attr("r", peakRad).attr("fill", function(d) {
         	if (d.p=='Bay'){
-            	if (chrindex[data.pmark[d.marker].chr] % 2 === 0) {
-              		return darkblue;
-           		} else {
-              		return darkgreen;
-           		}
+        		return darkblue;
         	  }
+        	
         	  if (d.p=='Sha'){
-            	if (chrindex[data.pmark[d.marker].chr] % 2 === 0) {
-              		return darkred;
-           		} else {
-              		return darkred;
-           		}
-        	  }  
+        		  return darkred;
+        	  } 
         }).attr("stroke", "none").attr("opacity", function(d) {
           return Zscale(d.lod);
         });
