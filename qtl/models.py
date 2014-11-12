@@ -20,15 +20,15 @@ class Marker(models.Model):
     
     marker_name = models.CharField(max_length=15, primary_key=True) #PVV4.1
     marker_chromosome = models.IntegerField()#1
-    marker_cm = models.DecimalField(max_digits = 3, decimal_places =1)#64.6
+    marker_cm = models.DecimalField(max_digits = 4, decimal_places =1)#101.6 
     marker_phys_pos = models.DecimalField(max_digits = 13, decimal_places =10)#0.008639
+    experiment_name = models.CharField(max_length=40)
 
     def __unicode__(self):
         return self.marker_name
 
 class Experiment(models.Model):
-    
-    
+
     experiment_name=models.CharField(max_length=50,primary_key=True)
     
     def __unicode__(self):
@@ -50,6 +50,7 @@ class Parent(models.Model):
     parent_type = models.CharField(max_length=20)
     expression = models.DecimalField(max_digits = 25, decimal_places = 15)
     locus_identifier = models.ForeignKey(Gene)
+    experiment_name = models.CharField(max_length=40)
     
     def __unicode__(self):
         return self.parent_type 
@@ -59,6 +60,7 @@ class RIL(models.Model):
     ril_name = models.CharField(max_length=20)
     ril_type = models.CharField(max_length=20)
     ril_exp = models.DecimalField(max_digits = 25, decimal_places = 15)
+    experiment_name = models.CharField(max_length=40)
     def __unicode__(self):
         return self.ril_name 
 
@@ -66,7 +68,8 @@ class RIL(models.Model):
 class Genotype(models.Model):
     marker_name = models.ForeignKey(Marker)
     ril_name = models.CharField(max_length=20)
-    genotype = models.CharField(max_length=5)
+    genotype = models.CharField(max_length=5,blank = True)# there might be some RIL populations missing genotype information. 
+    experiment_name = models.CharField(max_length=40)
 
 
 class Metabolite(models.Model):
@@ -78,6 +81,7 @@ class MParent(models.Model):
     parent_type = models.CharField(max_length=20)
     expression = models.DecimalField(max_digits = 25, decimal_places = 15)
     metabolite_name = models.ForeignKey(Metabolite)
+    experiment_name = models.CharField(max_length=40)
     def __unicode__(self):
         return self.parent_type
 
@@ -86,6 +90,7 @@ class MRIL(models.Model):
     ril_name = models.CharField(max_length=20)
     ril_type = models.CharField(max_length=20)
     ril_exp = models.DecimalField(max_digits = 25, decimal_places = 15)
+    experiment_name = models.CharField(max_length=40)
     def __unicode__(self):
         return self.ril_name
 

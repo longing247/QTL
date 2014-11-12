@@ -111,14 +111,27 @@ class AGRISDB(object):
                 tf.append(tr.find_all('td')[0].a.string.encode('ascii','ignore').strip())
             return tf
         except urllib2.HTTPError, e:
-                print 'ERROR code - %s' % e.code    
-        
+                print 'ERROR code - %s' % e.code
+                    
+    @staticmethod
+    def getPosition(tair_pre,gene):
+        try:
+            response = urllib2.urlopen(tair_pre+gene)
+            soup = BeautifulSoup(response)
+            #bs_family = []
+            pos = soup.find_all('table')[6].find_all('tr')[1]#.find_all('td')[3]     
+            print pos
+        except urllib2.HTTPError, e:
+            print 'ERROR code - %s' % e.code
         
 if __name__=="__main__":
     
     atcisdb_pre = 'http://arabidopsis.med.ohio-state.edu/AtcisDB/atcisview.html?id='
     attfdb_pre = 'http://arabidopsis.med.ohio-state.edu/AtTFDB/tfsummary.html?locusid='
-    attffamdb_pre = 'http://arabidopsis.med.ohio-state.edu/AtTFDB/tfbrowse.html?fam='       
+    attffamdb_pre = 'http://arabidopsis.med.ohio-state.edu/AtTFDB/tfbrowse.html?fam='  
+    tair_pre = 'http://arabidopsis.org/servlets/TairObject?type=locus&name='
+         
+    AGRISDB.getPosition(tair_pre,'AT4G37720')
     #print AGRISDB.isTF(atcisdb_pre,attfdb_pre,'AT3G24650')
     #print AGRISDB.isTF(atcisdb_pre,attfdb_pre,'AT3G24650T')
     #print AGRISDB.isTF(attfdb_pre,'AT3G50500')

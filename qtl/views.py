@@ -5,6 +5,7 @@ import json
 import pandas as pd
 import logging
 import math
+import re
 import itertools
 from datetime import datetime
 
@@ -32,12 +33,6 @@ The derived files: gene_test.txt, marker_test.txt, lod_test.txt, and etc are all
 All the files were normalized use tab delimited text file format with extension (.txt) and were converted from Unicode to UTF8 by Notepad in order to be compatible with MySQL.
 Python built-in module csv was invoked to parse the Django upoloaded files.
 '''
-
-# Get an instance of a logger
-logger = logging.getLogger(__name__)
-
-# Log an error message (for example)
-#       logger.error('Error message!') or logger.debug('Debug message!')
 
 def uploadView(request):
     '''handle parsing objects from txt file, and saving entries to MySQL DB
@@ -174,7 +169,8 @@ def uploadView(request):
                 messages.error(request,'Error')     
                 return render_to_response('qtl/upload.html',args) 
         
-        
+        else: # No file was selected.
+            return render_to_response('qtl/upload.html',args)
     else: # request.method =='GET'
         return render_to_response('qtl/upload.html',args)
 
@@ -185,14 +181,16 @@ def chromosomeView(request):
     search_gene = request.session['search_gene']
     #marker_list = request.session['marker_list'] 
     lod_list = request.session['js_lod_list_session'][1:-1].split(" ")
-        
+    experiment = request.session['experiment_name'].encode('ascii','ignore')    
     chr_dic = {1:'Chr I',2:'Chr II',3:'Chr III', 4:'Chr IV',5:'Chr V'}
     color_list = {1:'black',2:'blue',3:'Green',4:'purple',5:'cyan',6:'red'}
     features_list = {}
     j = 0
+    marker_list_experiment = LOD.objects.filter(experiment_name = experiment,gxe=False).values('marker_name').distinct()
     for i in range(1,6):
         li = []
-        marker_list = Marker.objects.filter(marker_chromosome = i).order_by('marker_cm')
+        
+        marker_list = Marker.objects.filter(marker_chromosome = i,marker_name__in=marker_list_experiment).order_by('marker_cm')
         for markers in marker_list:
             if float(lod_list[j]) <-3:
                 t = int(markers.marker_phys_pos*1000000), (int(markers.marker_phys_pos*1000000)+100),None,markers.marker_name.encode('ascii','ignore'),color_list[1]
@@ -227,95 +225,89 @@ def searchGeneView(request):
     fetch expression value in both parent and RIL population and present those value in bar chart respectively
     plot LOD scores of gene expression value along with chromosome (against marker)
     '''
-    if request.GET.get('gene'):
-        search_gene = request.GET.get('gene')
-        gene = Gene.objects.get(locus_identifier = search_gene)
-        exp_list = Parent.objects.filter(locus_identifier = search_gene)
+    if request.GET.get('gene') and request.GET.get('experiment'):      
+        search_gene = request.GET.get('gene').encode('ascii','ignore').upper()
+        experiment = request.GET.get('experiment').encode('ascii','ignore') #returns experiment name like Ligterink_2014 which are used as filter in the query
         
-        parent_type_list = []
-        expression_list = []
-        for exp in exp_list:
-            parent_type_list.append(exp.parent_type)
-            expression_list.append(decimalFormat(exp.expression))
+        if Gene.objects.filter(locus_identifier = search_gene).exists():
+            gene = Gene.objects.get(locus_identifier = search_gene)
+            exp_list = Parent.objects.filter(locus_identifier = search_gene, experiment_name = experiment)
+            parent_type_list = []
+            expression_list = []
+            for exp in exp_list:
+                parent_type_list.append(exp.parent_type)
+                expression_list.append(decimalFormat(exp.expression))
+            
+            ril_list = RIL.objects.filter(locus_identifier = search_gene,experiment_name = experiment).values('ril_type').annotate(average = Avg('ril_exp'))
+            ril_type_list = []
+            ril_avg_exp_list = []
+            
+            for ril in ril_list:
+                ril_type_list.append(ril['ril_type'])
+                ril_avg_exp_list.append(decimalFormat(ril['average']))       
+            ril_avg_list = [ril_avg_exp_list]
+            
+            gxe_ = False
+            peak_marker,peak_lod = findPeak(search_gene,gxe_,experiment)
+            js_search_gene = json.dumps(search_gene)
+            js_parent_type_list = json.dumps(parent_type_list)
+            js_express_list = json.dumps([expression_list],cls=DjangoJSONEncoder) 
+            js_ril_type_list = json.dumps(ril_type_list)
+            js_ril_avg_exp_list = json.dumps(ril_avg_list,cls=DjangoJSONEncoder) 
+            js_peak_marker= json.dumps(peak_marker)
+            js_peak_lod = json.dumps(decimalFormat(peak_lod),cls=DjangoJSONEncoder)  
+            marker_list,lod_list = marker_plot(search_gene,gxe_,experiment)
+            js_marker_list= json.dumps(marker_list)
+            js_lod_list_session = json.dumps(lod_list,cls=DjangoJSONEncoder)
+            js_lod_list = json.dumps([lod_list],cls=DjangoJSONEncoder)
+            
+            gxe_env = True
+            peak_marker_env,peak_lod_env = findPeak(search_gene,gxe_env,experiment)
+            js_peak_marker_env= json.dumps(peak_marker_env)
+            js_peak_lod_env = json.dumps(peak_lod_env,cls=DjangoJSONEncoder)
+            marker_env_list,lod_env_list = marker_plot(search_gene,gxe_env,experiment)
+            js_marker_env_list= json.dumps(marker_env_list)
+            js_lod_env_list = json.dumps([lod_env_list],cls=DjangoJSONEncoder)
+            js_lod_all_list = json.dumps([lod_list,lod_env_list],cls=DjangoJSONEncoder)
+            #it might be helpful to define request.session.set_expiry(value). 
+            request.session['search_gene'] = js_search_gene.encode('ascii','ignore')[1:-1]   
+            request.session['peak_marker'] = js_peak_marker.encode('ascii','ignore')[1:-1]
+            request.session['peak_lod'] = js_peak_lod
+            #request.session['marker_list'] = js_marker_list
+            lod_str =  ''
+            for lod in lod_list:
+                lod_str +=' '+str(lod)
+            request.session['js_lod_list_session'] = json.dumps(lod_str[1:],cls=DjangoJSONEncoder)
+            request.session['experiment_name'] = experiment 
+            return render_to_response('qtl/gene.html',{'search_gene':js_search_gene,#searched gene
+                                                            'gene':gene,#Gene instance returned from database 
+                                                            'peak_marker_js': js_peak_marker, # highest peak marker
+                                                            'peak_lod_js':js_peak_lod,# the LOD score of the highest peak marker
+                                                            'js_marker_list':js_marker_list,# markers along the chromosome 
+                                                            'js_lod_list':js_lod_list, # the corresponding LOD expression value of the searched gene/trait against the marker list. 
+                                                            #'cor_list_js':cor_list_js, #calculate correlation between a certain trait and all the other genes.
+                                                            #'js_gene_list':js_gene_list,
+                                                            #'js_corr_list':js_corr_list,
+                                                            #'js_query_result':query_result,
+                                                            'js_peak_marker_env':js_peak_marker_env, # environment interaction peak marker
+                                                            'js_peak_lod_env':js_peak_lod_env,# environment interaction peak marker expression
+                                                            'js_marker_env_list':js_marker_env_list,#markers along the chromosome 
+                                                            'js_lod_env_list': js_lod_env_list,# he corresponding LOD expression value of the searched gene/trait with environmental interaction against the marker list.
+                                                            'js_lod_all_list': js_lod_all_list, # a list contain two lod expression (LOD G and LOD GxE) list elements
+                                                            'parent_type_list':js_parent_type_list, # parent type 
+                                                            'express_list': js_express_list, # the corresponding expression value in parents of the searched gene
+                                                            'js_ril_type_list':js_ril_type_list, # RIL type
+                                                            'js_ril_avg_exp_list':js_ril_avg_exp_list})# the corresponding expression value in RILs of the searched gene            
+        else:
+            raise NameError('Query gene does not exist')
         
-        ril_list = RIL.objects.filter(locus_identifier = search_gene).values('ril_type').annotate(average = Avg('ril_exp'))
-        ril_type_list = []
-        ril_avg_exp_list = []
-        
-        for ril in ril_list:
-            ril_type_list.append(ril['ril_type'])
-            ril_avg_exp_list.append(decimalFormat(ril['average']))       
-        ril_avg_list = [ril_avg_exp_list]
-        
-        #Entire correlation calculation 
-        #query_result = mysqlCorrelationAll(search_gene)
-        
-        #Back-end Correlation calculation 
-        #gene_list = []
-        #corr_list = []
-        #for gene in query_result:
-        #    gene_list.append(gene.locus_identifier)
-        #    corr_list.append(gene.LOD_score)
-      
-        #cor_list = ril_correlation(search_gene)
-        #cor_list_js = json.dumps(cor_list)
-        gxe_ = False
-        peak_marker,peak_lod = findPeak(search_gene,gxe_)
-        js_search_gene = json.dumps(search_gene)
-        js_parent_type_list = json.dumps(parent_type_list)
-        js_express_list = json.dumps([expression_list],cls=DjangoJSONEncoder) 
-        js_ril_type_list = json.dumps(ril_type_list)
-        js_ril_avg_exp_list = json.dumps(ril_avg_list,cls=DjangoJSONEncoder) 
-        js_peak_marker= json.dumps(peak_marker)
-        js_peak_lod = json.dumps(decimalFormat(peak_lod),cls=DjangoJSONEncoder)
-        
-        #js_gene_list = json.dump(gene_list)
-        #js_corr_list = json.dumps(corr_list,cls=DjangoJSONEncoder)        
-        marker_list,lod_list = marker_plot(search_gene,gxe_)
-        js_marker_list= json.dumps(marker_list)
-        js_lod_list_session = json.dumps(lod_list,cls=DjangoJSONEncoder)
-        js_lod_list = json.dumps([lod_list],cls=DjangoJSONEncoder)
-        
-        gxe_env = True
-        peak_marker_env,peak_lod_env = findPeak(search_gene,gxe_env)
-        js_peak_marker_env= json.dumps(peak_marker_env)
-        js_peak_lod_env = json.dumps(peak_lod_env,cls=DjangoJSONEncoder)
-        marker_env_list,lod_env_list = marker_plot(search_gene,gxe_env)
-        js_marker_env_list= json.dumps(marker_env_list)
-        js_lod_env_list = json.dumps([lod_env_list],cls=DjangoJSONEncoder)
-        js_lod_all_list = json.dumps([lod_list,lod_env_list],cls=DjangoJSONEncoder)
         
         
-        #it might be helpful to define request.session.set_expiry(value). 
-        request.session['search_gene'] = js_search_gene.encode('ascii','ignore')[1:-1]   
-        request.session['peak_marker'] = js_peak_marker.encode('ascii','ignore')[1:-1]
-        request.session['peak_lod'] = js_peak_lod
-        #request.session['marker_list'] = js_marker_list
-        lod_str =  ''
-        for lod in lod_list:
-            lod_str +=' '+str(lod)
-        request.session['js_lod_list_session'] = json.dumps(lod_str[1:],cls=DjangoJSONEncoder)
-        return render_to_response('qtl/gene.html',{'search_gene':js_search_gene,#searched gene
-                                                        'gene':gene,#Gene instance returned from database 
-                                                        'peak_marker_js': js_peak_marker, # highest peak marker
-                                                        'peak_lod_js':js_peak_lod,# the LOD score of the highest peak marker
-                                                        'js_marker_list':js_marker_list,# markers along the chromosome 
-                                                        'js_lod_list':js_lod_list, # the corresponding LOD expression value of the searched gene/trait against the marker list. 
-                                                        #'cor_list_js':cor_list_js, #calculate correlation between a certain trait and all the other genes.
-                                                        #'js_gene_list':js_gene_list,
-                                                        #'js_corr_list':js_corr_list,
-                                                        #'js_query_result':query_result,
-                                                        'js_peak_marker_env':js_peak_marker_env, # environment interaction peak marker
-                                                        'js_peak_lod_env':js_peak_lod_env,# environment interaction peak marker expression
-                                                        'js_marker_env_list':js_marker_env_list,#markers along the chromosome 
-                                                        'js_lod_env_list': js_lod_env_list,# he corresponding LOD expression value of the searched gene/trait with environmental interaction against the marker list.
-                                                        'js_lod_all_list': js_lod_all_list, # a list contain two lod expression (LOD G and LOD GxE) list elements
-                                                        'parent_type_list':js_parent_type_list, # parent type 
-                                                        'express_list': js_express_list, # the corresponding expression value in parents of the searched gene
-                                                        'js_ril_type_list':js_ril_type_list, # RIL type
-                                                        'js_ril_avg_exp_list':js_ril_avg_exp_list})# the corresponding expression value in RILs of the searched gene            
+        
+        
     else:
-        return render_to_response('qtl/gene.html',{})
+        exps = Experiment.objects.all().values_list('experiment_name',flat=True)
+        return render_to_response('qtl/gene.html',{'exps':exps})
     
     
 def searchOverlapQTLView(request):
@@ -328,6 +320,7 @@ def searchOverlapQTLView(request):
         search_gene = request.session['search_gene']
         peak_marker = request.session['peak_marker']
         peak_lod = request.session['peak_lod'] 
+        experiment = request.session['experiment_name']
         lod_thld = 2.3
         target_traits = ''
         marker_list = []
@@ -341,9 +334,9 @@ def searchOverlapQTLView(request):
             if request.GET.get('lod_thld').strip().isdigit():  
                 lod_thld = request.GET.get('lod_thld').strip()         
                 target_traits = request.GET.get('trait').strip().split(',')
-                overlap_traits = LOD.objects.filter(LOD_score__gte = lod_thld,locus_identifier__in=target_traits,marker_name_id = peak_marker,gxe=gxe_).exclude(locus_identifier = search_gene)
+                overlap_traits = LOD.objects.filter(LOD_score__gte = lod_thld,locus_identifier__in=target_traits,marker_name_id = peak_marker,gxe=gxe_,experiment_name=experiment).exclude(locus_identifier = search_gene)
                 for trait in overlap_traits:
-                    marker_list,lod_list = marker_plot(trait.locus_identifier,gxe_)
+                    marker_list,lod_list = marker_plot(trait.locus_identifier,gxe_,experiment)
                     traits_list.append(trait.locus_identifier.locus_identifier)
                     
                     overlap_traits_exp_list.append(lod_list) 
@@ -373,9 +366,9 @@ def searchOverlapQTLView(request):
         elif request.GET.get('trait'):   
             corr = {}   
             target_traits = request.GET.get('trait').strip().split(',')
-            overlap_traits = LOD.objects.filter(LOD_score__gte = lod_thld,locus_identifier__in=target_traits,marker_name = peak_marker,gxe=gxe_).exclude(locus_identifier = search_gene).order_by('-LOD_score')
+            overlap_traits = LOD.objects.filter(LOD_score__gte = lod_thld,locus_identifier__in=target_traits,marker_name = peak_marker,gxe=gxe_,experiment_name=experiment).exclude(locus_identifier = search_gene).order_by('-LOD_score')
             for trait in overlap_traits:
-                marker_list,lod_list = marker_plot(trait.locus_identifier,gxe_) 
+                marker_list,lod_list = marker_plot(trait.locus_identifier,gxe_,experiment) 
                 traits_list.append(trait.locus_identifier.locus_identifier)
                 overlap_traits_exp_list.append(lod_list)
                 for t in mysqlCorrelationSingle(trait.locus_identifier.locus_identifier,search_gene):
@@ -404,10 +397,10 @@ def searchOverlapQTLView(request):
             corr = {}
             if request.GET.get('lod_thld').strip().isdigit():  
                 lod_thld = request.GET.get('lod_thld').strip()
-            overlap_traits = LOD.objects.filter(LOD_score__gte = lod_thld, marker_name = peak_marker,gxe=gxe_).exclude(locus_identifier = search_gene).order_by('-LOD_score')[:5]
+            overlap_traits = LOD.objects.filter(LOD_score__gte = lod_thld, marker_name = peak_marker,gxe=gxe_,experiment_name=experiment).exclude(locus_identifier = search_gene).order_by('-LOD_score')[:5]
             #counter = 1 # default: present the expression value of the top 5 co-regulated traits along the chromosome in the same figure
             for trait in overlap_traits:
-                marker_list,lod_list = marker_plot(trait.locus_identifier,gxe_)
+                marker_list,lod_list = marker_plot(trait.locus_identifier,gxe_,experiment)
                 traits_list.append(trait.locus_identifier.locus_identifier)
                 overlap_traits_exp_list.append(lod_list)
                 for t in mysqlCorrelationSingle(trait.locus_identifier.locus_identifier,search_gene):
@@ -430,7 +423,7 @@ def searchOverlapQTLView(request):
                                                           'traits_list':js_traits_list, # traits
                                                           'overlap_traits_exp_list':js_overlap_traits_exp_list, # expression 
                                                           'corr':corr 
-                                                          }) 
+                                                          })
         else:
             # __gte option needs to be placed in the first argument. Attention
             # tested in manage.py shell
@@ -438,12 +431,12 @@ def searchOverlapQTLView(request):
             # print overlap+traits gave error: coercing to Unicode: need string or buffer, Gene found 
             # exclude the query gene
             #.exclude(locus_identifier = search_gene)
-            overlap_traits = LOD.objects.filter(LOD_score__gte = lod_thld, marker_name = peak_marker,gxe=gxe_).exclude(locus_identifier = search_gene).order_by('-LOD_score')[:5]#.annotate(correlation = mysqlCorrelationSingle(LOD.locus_identifier,search_gene))
+            overlap_traits = LOD.objects.filter(LOD_score__gte = lod_thld, marker_name = peak_marker,gxe=gxe_,experiment_name=experiment).exclude(locus_identifier = search_gene).order_by('-LOD_score')[:5]#.annotate(correlation = mysqlCorrelationSingle(LOD.locus_identifier,search_gene))
             #counter = 1 # default: present the expression value of the top 5 co-regulated traits along the chromosome in the same figure
             corr = {}
             for trait in overlap_traits:
 
-                marker_list,lod_list = marker_plot(trait.locus_identifier,gxe_)
+                marker_list,lod_list = marker_plot(trait.locus_identifier,gxe_,experiment)
                 traits_list.append(trait.locus_identifier.locus_identifier)
                 overlap_traits_exp_list.append(lod_list)
                 for t in mysqlCorrelationSingle(trait.locus_identifier.locus_identifier,search_gene):
@@ -604,11 +597,12 @@ def eQTLPlotView(request):
     plot eQTL maping
     
     '''
-    if request.session['search_gene']:
+    if request.session['search_gene'] and request.session['experiment_name']:
         lod_thld = 2.3
         if request.GET.get('eQTL_lod_thld'):
             lod_thld = float(request.GET.get('eQTL_lod_thld'))
         search_gene = request.session['search_gene']
+        experiment = request.session['experiment_name']
         # output_dic will be used to generate JSON file.
         output_dic = {}
         chr_nr = 5
@@ -629,24 +623,28 @@ def eQTLPlotView(request):
         
         # define KEY pmarknames
         chr_marker_list_dic = {}
+        marker_list = getMarkersList(experiment)
         for i in range(chr_nr):
-            chr_marker_list_dic[i+1] = list(getChrMarkers(i+1))  #django.db.models.query.ValuesListQuerySet    
+            chr_marker_list_dic[i+1] = list(getChrMarkers(i+1,marker_list))  #django.db.models.query.ValuesListQuerySet
         output_dic['pmarknames'] = chr_marker_list_dic
         
         # define KEY markers
-        output_dic['markers'] = list(getMarkersList())
+        output_dic['markers'] = list(getMarkerNamesList(marker_list))
+        
         
         # define KEY pmark
         marker_list_dic = {}
-        marker_list = Marker.objects.all()
-        for m in marker_list:
+        marker_list = LOD.objects.filter(experiment_name = experiment).values('marker_name').distinct()
+        marker_queryset_list = Marker.objects.filter(marker_name__in=marker_list).order_by('marker_chromosome','marker_cm')
+        for m in marker_queryset_list:
             m_info ={'chr':m.marker_chromosome,'pos_cM':float(m.marker_cm),'pos_Mbp':float(m.marker_phys_pos)}
             marker_list_dic[m.marker_name] = m_info
         output_dic['pmark'] = marker_list_dic
         
         # define KEY gene
         gene_list_dic = {}
-        gene_queryset_list = Gene.objects.all().order_by('chromosome','start')
+        lod_gene_list = LOD.objects.filter(experiment_name = experiment).values('locus_identifier').distinct()
+        gene_queryset_list = Gene.objects.filter(locus_identifier__in=lod_gene_list).order_by('chromosome','start')
         for gene in gene_queryset_list:     
             gene_list_dic[gene.locus_identifier]={'chr':gene.chromosome,'pos_Mbp':float(gene.start)/1000000} 
         output_dic['gene'] = gene_list_dic
@@ -655,8 +653,8 @@ def eQTLPlotView(request):
         #sha_lod_thld = -lod_thld
         peaks_list = []
         neg_lod_thld = -lod_thld
-        lod_bay_list = LOD.objects.filter(LOD_score__gte= lod_thld,gxe = False)
-        lod_sha_list = LOD.objects.filter(LOD_score__lte = neg_lod_thld, gxe = False)
+        lod_bay_list = LOD.objects.filter(LOD_score__gte= lod_thld,gxe = False,experiment_name = experiment)
+        lod_sha_list = LOD.objects.filter(LOD_score__lte = neg_lod_thld, gxe = False,experiment_name = experiment)
         for lod in lod_bay_list:
             lod_={}
             lod_['gene'] = lod.locus_identifier.locus_identifier
@@ -681,7 +679,7 @@ def eQTLPlotView(request):
         
         # define KEY exp
         exp_list = []
-        exp_ = LOD.objects.filter(locus_identifier = search_gene,gxe=False)
+        exp_ = LOD.objects.filter(locus_identifier = search_gene,gxe=False,experiment_name=experiment)
         for exp in exp_:
             exp_dic = {}
             exp_dic['gene'] = exp.locus_identifier.locus_identifier
@@ -690,34 +688,40 @@ def eQTLPlotView(request):
             exp_list.append(exp_dic)
         output_dic['exp'] = exp_list    
         output_dic_js = json.dumps(output_dic)
-        search_gene = json.dumps(search_gene)
+        search_gene = json.dumps(search_gene.upper())
+        
+        ########## output json file #########
+        with open('test1212.json','wb') as output:
+            json.dump(output_dic,output,indent = 4)
         return render_to_response('qtl/eQTL.html',{'output_dic_js':output_dic_js,
                                                    'search_gene': search_gene,
                                                    'lod_thld': lod_thld,
                                                    'nr_eQTL':nr_eQTL,
                                                    'nr_gene':nr_gene,
                                                    'p':pv,
-                                                   'peaks_list':peaks_list,
+                                                   #'peaks_list':peaks_list,
                                                    'peaks_gene_list':peaks_gene_list})
     
     else:
         return render_to_response('qtl/gene.html',{})
 
-
-def getMarkersList():
+def getMarkersList(experiment):
     '''
     return all the markers.
     '''
+    marker_list = LOD.objects.filter(experiment_name = experiment).values('marker_name').distinct()
+    return marker_list
     
-    return Marker.objects.all().order_by('marker_chromosome','marker_cm').values_list('marker_name', flat = True)
+def getMarkerNamesList(marker_list):
+    marker_queryset_list = Marker.objects.filter(marker_name__in=marker_list).order_by('marker_chromosome','marker_cm').values_list('marker_name',flat=True)
+    return marker_queryset_list
 
-def getChrMarkers(chr_name):
+def getChrMarkers(chr_name,marker_list):
     '''
     return all the markers along on the chr_name.
     '''
-    
-    return Marker.objects.filter(marker_chromosome = chr_name).order_by('marker_cm').values_list('marker_name',flat=True)
-
+    marker_chr_list = Marker.objects.filter(marker_chromosome = chr_name, marker_name__in=marker_list).order_by('marker_cm').values_list('marker_name',flat=True)
+    return marker_chr_list
 
 def geneUpload(f):    
     '''
@@ -738,7 +742,7 @@ def geneUpload(f):
         if not 'Locus Identifier' in line[0]:
             i+=1    
             add_gene = Gene()
-            add_gene.locus_identifier = line[0]
+            add_gene.locus_identifier = line[0].upper()
             add_gene.gene_model_name = line[1]
             add_gene.gene_model_description = line[2]
             add_gene.gene_model_type = line[3]
@@ -762,6 +766,7 @@ def markerUpload(f):
     marker_phys_pos = models.DecimalField(max_digits = 13, decimal_places =10)#0.008639  
     '''
     tic = time.clock()
+    exp_name = getExperimentName(f)
     csv_reader = csv.reader(f,delimiter='\t') 
     i=0    
     for line in csv_reader:      
@@ -772,6 +777,8 @@ def markerUpload(f):
             add_marker.marker_chromosome = line[1]
             add_marker.marker_cm = line[2]
             add_marker.marker_phys_pos = line[3]
+            add_marker.experiment_name = exp_name
+            
             add_marker.save()               
         else:
             print 'header %s' % line
@@ -797,12 +804,14 @@ def lodUpload(f):
     split the data set from that row into another one.
     Anyhow this part of function needs to be optimized by either using mmap or generator.
     '''
-    tic = time.clock()   
+    tic = time.clock()
+    exp_name = getExperimentName(f)
     add_exp = Experiment()
-    add_exp.experiment_name = f.name
+    add_exp.experiment_name = exp_name
     add_exp.save()
     marker_list = []  
     i=0
+    j = 0
     for line in getData(f):
         if 'QTL' in line[0]:
             for marker in range(1,len(line)):
@@ -811,12 +820,24 @@ def lodUpload(f):
         else:
             i+=1
             print i
+            print line[0].upper()
             for gene in range(1,len(line)):
-                add_lod = LOD(experiment_name = Experiment.objects.get(pk=f.name),
-                              locus_identifier = Gene.objects.get(pk= line[0]),
-                              marker_name =  Marker.objects.get(pk=marker_list[gene-1]),
-                              LOD_score =  line[gene])
-                add_lod.save()
+                
+                if Gene.objects.filter(locus_identifier=line[0].upper()).exists():         
+                    add_lod = LOD(experiment_name = Experiment.objects.get(pk=exp_name),
+                                  locus_identifier = Gene.objects.get(pk= line[0].upper()),
+                                  marker_name =  Marker.objects.get(pk=marker_list[gene-1]),
+                                  LOD_score =  line[gene])
+                    add_lod.save()
+                else:
+                    print 'obslete'
+                    add_gene = Gene(locus_identifier = line[0].upper(), gene_model_name = 'obsolete') # gene is not registed in the database.
+                    add_gene.save()
+                    add_lod = LOD(experiment_name = Experiment.objects.get(pk=exp_name),
+                                  locus_identifier = Gene.objects.get(pk= line[0].upper()),
+                                  marker_name =  Marker.objects.get(pk=marker_list[gene-1]),
+                                  LOD_score =  line[gene])
+                    add_lod.save()
     toc = time.clock()            
     print 'in %f seconds' % (toc-tic)
     print '%d records added' %i
@@ -829,6 +850,7 @@ def parentUpload(f):
     locus_identifier = models.ForeignKey(Gene)
     '''
     tic = time.clock()   
+    exp_name = getExperimentName(f)
     parent_list = []  
     i=0
     for line in getData(f):
@@ -844,7 +866,9 @@ def parentUpload(f):
                 else:
                     add_parent = Parent(parent_type =  parent_list[exp-1],
                                         expression =  line[exp],
-                                        locus_identifier = Gene.objects.get(pk= line[0]))
+                                        locus_identifier = Gene.objects.get(pk= line[0].upper()),
+                                        experiment_name = exp_name
+                                        )
                     add_parent.save()
     toc = time.clock()            
     print 'in %f seconds' % (toc-tic)
@@ -874,6 +898,7 @@ def rilUpload(f):
 def getAll(f,arg1,arg2):
     li1 = []
     li2 = []
+    exp_name = getExperimentName(f)
     i = 0
     for line in getData(f):
         if arg1 in line[0]:
@@ -891,7 +916,8 @@ def getAll(f,arg1,arg2):
                     add_ril = RIL(ril_name = li2[exp-1],
                                   ril_type = li1[exp-1],
                                   ril_exp = line[exp],
-                                  locus_identifier = Gene.objects.get(pk= line[0]))
+                                  locus_identifier = Gene.objects.get(pk= line[0].upper()),
+                                  experiment_name = exp_name)
                     add_ril.save()
                 else:
                     continue
@@ -901,6 +927,7 @@ def getAll(f,arg1,arg2):
 def getAllMetabolite(f,arg1,arg2):
     li1 = []
     li2 = []
+    exp_name = getExperimentName(f)
     i = 0
     for line in getData(f):
         if arg1 in line[0]:
@@ -918,7 +945,8 @@ def getAllMetabolite(f,arg1,arg2):
                     add_ril = MRIL(ril_name = li2[exp-1],
                                   ril_type = li1[exp-1],
                                   ril_exp = line[exp],
-                                  metabolite_name = Metabolite.objects.get(pk= line[0]))
+                                  metabolite_name = Metabolite.objects.get(pk= line[0].upper()),
+                                  experiment_name = exp_name)
                     add_ril.save()
                 else:
                     continue
@@ -947,7 +975,7 @@ def metaboliteUpload(f):
         else:
             i+=1
             add_metabolite = Metabolite()
-            add_metabolite.metabolite_name = line[0]
+            add_metabolite.metabolite_name = line[0].upper()
             
 
     toc = time.clock()
@@ -961,7 +989,8 @@ def metaboliteParentUpload(f):
     expression = models.DecimalField(max_digits = 25, decimal_places = 15)
     metabolite_name = models.ForeignKey(Metabolite)
     '''
-    tic = time.clock()   
+    tic = time.clock()  
+    exp_name = getExperimentName(f)
     parent_list = []  
     i=0
     for line in getData(f):
@@ -978,7 +1007,8 @@ def metaboliteParentUpload(f):
                 else:
                     add_parent = MParent(parent_type =  parent_list[exp-1],
                                         expression =  line[exp],
-                                        metabolite_name = Metabolite.objects.get(pk= line[0]))
+                                        metabolite_name = Metabolite.objects.get(pk= line[0].upper()),
+                                        experiment_name = exp_name)
                     add_parent.save()
     toc = time.clock()            
     print 'in %f seconds' % (toc-tic)
@@ -1019,7 +1049,8 @@ def metaboliteLODUpload(f):
     '''
     tic = time.clock()   
     add_exp = Experiment()
-    add_exp.experiment_name = f.name
+    exp_name = getExperimentName(f)
+    add_exp.experiment_name = exp_name
     add_exp.save()
     marker_list = []  
     i=0
@@ -1032,8 +1063,8 @@ def metaboliteLODUpload(f):
             i+=1
             print i
             for gene in range(1,len(line)):
-                add_mlod = MLOD(experiment_name = Experiment.objects.get(pk=f.name),
-                              metabolite_name = Metabolite.objects.get(pk= line[0]),
+                add_mlod = MLOD(experiment_name = Experiment.objects.get(pk=exp_name),
+                              metabolite_name = Metabolite.objects.get(pk= line[0].upper()),
                               marker_name =  Marker.objects.get(pk=marker_list[gene-1]),
                               LOD_score =  line[gene])
                 add_mlod.save()
@@ -1066,7 +1097,8 @@ def envLODUpload(f):
     '''
     tic = time.clock()   
     add_exp = Experiment()
-    add_exp.experiment_name = f.name
+    exp_name = getExperimentName(f)
+    add_exp.experiment_name = exp_name
     add_exp.save()
     marker_list = []  
     i=0
@@ -1080,8 +1112,8 @@ def envLODUpload(f):
             print i
             print line[0]
             for gene in range(1,len(line)):
-                add_lod = LOD(experiment_name = Experiment.objects.get(pk=f.name),
-                              locus_identifier = Gene.objects.get(pk= line[0]),
+                add_lod = LOD(experiment_name = Experiment.objects.get(pk=exp_name),
+                              locus_identifier = Gene.objects.get(pk= line[0].upper()),
                               marker_name =  Marker.objects.get(pk=marker_list[gene-1]),
                               gxe = True,
                               LOD_score =  line[gene])
@@ -1110,8 +1142,9 @@ def envMLODUpload(f):
     Anyhow this part of function needs to be optimized by either using mmap or generator.
     '''
     tic = time.clock()   
+    exp_name = getExperimentName(f)
     add_exp = Experiment()
-    add_exp.experiment_name = f.name
+    add_exp.experiment_name = exp_name
     add_exp.save()
     marker_list = []  
     i=0
@@ -1125,8 +1158,8 @@ def envMLODUpload(f):
             print i
             print line[0]
             for meta in range(1,len(line)):
-                add_lod = MLOD(experiment_name = Experiment.objects.get(pk=f.name),
-                              metabolite_name = Metabolite.objects.get(pk= line[0]),
+                add_lod = MLOD(experiment_name = Experiment.objects.get(pk=exp_name),
+                              metabolite_name = Metabolite.objects.get(pk= line[0].upper()),
                               marker_name =  Marker.objects.get(pk=marker_list[meta-1]),
                               gxe = True,
                               LOD_score =  line[meta])
@@ -1136,34 +1169,24 @@ def envMLODUpload(f):
     print '%d records added' %i    
 
 
-def findPeak(gene_name,gexpression):
+def findPeak(gene_name,gexpression,exp):
     '''find the peak marker and expression value
     argument2 gexpression refers LOD.gxe(BooleanField: Ture or False in Django, 1 or 0 in MySQL) enviorment interaction. 
     '''
-    exp_list = LOD.objects.filter(locus_identifier = gene_name,gxe= gexpression)    
-    if exp_list:
-        peak = exp_list[0].LOD_score
-        for exp in exp_list:
-            if exp.LOD_score > peak:
-                peak = exp.LOD_score
-
-        marker = LOD.objects.filter(locus_identifier = gene_name,LOD_score = peak).values('marker_name')[0]['marker_name']   
+    exp_list = LOD.objects.filter(locus_identifier = gene_name,gxe= gexpression,experiment_name= exp).order_by('-LOD_score')    
+    marker = exp_list[0].marker_name.marker_name
+    peak = exp_list[0].LOD_score 
     return marker,peak
 
-def findMPeak(metabolite,gexpression):
+def findMPeak(metabolite,gexpression,exp):
     '''find the peak marker and expression value of metabolite
     argument2 gexpression refers MLOD.gxe(BooleanField: Ture or False in Django, 1 or 0 in MySQL) enviorment interaction. 
     '''
-    exp_list = MLOD.objects.filter(metabolite_name = metabolite,gxe= gexpression)    
-    if exp_list:
-        peak = exp_list[0].LOD_score
-        for exp in exp_list:
-            if exp.LOD_score > peak:
-                peak = exp.LOD_score
-
-        marker = MLOD.objects.filter(metabolite_name = metabolite,LOD_score = peak).values('marker_name')[0]['marker_name']   
+    exp_list = MLOD.objects.filter(metabolite_name = metabolite,gxe= gexpression,experiment_name= exp).order_by('-LOD_score')    
+    marker = exp_list[0].marker_name.marker_name
+    peak = exp_list[0].LOD_score 
+    print marker,peak
     return marker,peak
-
 def yield_gene(gene_list):
     for gene in gene_list:
         yield gene
@@ -1182,16 +1205,17 @@ def exp_series(query_gene):
     
     return pd.Series(series_list) #pandas Series object which will be later used in correlation calculation
 
-def marker_plot(gene_name,gxe_):
+def marker_plot(gene_name,gxe_,experiment):
     '''
     plot expression (LOD scores) along the chromosome, gxe True: response to enviormental changes influencing by genotypes. 
     '''
     lod_list = []
     marker_list = []
-    marker_query_list_set = Marker.objects.values_list('marker_name',flat=True).order_by('marker_chromosome','marker_cm')
+    marker_query_list = LOD.objects.filter(experiment_name = experiment).values('marker_name').distinct()
+    marker_query_list_set = Marker.objects.filter(marker_name__in=marker_query_list).values_list('marker_name',flat=True).order_by('marker_chromosome','marker_cm')
     for marker in marker_query_list_set:
         marker_list.append(marker)
-        exp = LOD.objects.get(locus_identifier = gene_name,marker_name = marker,gxe=gxe_).LOD_score
+        exp = LOD.objects.get(locus_identifier = gene_name,experiment_name = experiment,marker_name = marker,gxe=gxe_).LOD_score
         lod_list.append(float('{0:.2f}'.format(exp)))
     '''
     #calculate number of markers in each chromosome.
@@ -1204,15 +1228,17 @@ def marker_plot(gene_name,gxe_):
     '''
     return marker_list,lod_list
 
-def m_marker_plot(metabolite,gxe_):
+def m_marker_plot(metabolite,gxe_,exp,experiment):
     '''
     plot expression (LOD scores) along the chromosome, gxe True: response to enviormental changes influencing by genotypes. 
     '''
     lod_list = []
     marker_list = []
-    for marker in Marker.objects.values_list('marker_name',flat=True).order_by('marker_chromosome','marker_cm'):
+    marker_query_list = LOD.objects.filter(experiment_name = experiment).values('marker_name').distinct()
+    marker_query_list_set = Marker.objects.filter(marker_name__in=marker_query_list).values_list('marker_name',flat=True).order_by('marker_chromosome','marker_cm')
+    for marker in marker_query_list_set :
         marker_list.append(marker)
-        exp = MLOD.objects.get(metabolite_name = metabolite,marker_name = marker,gxe=gxe_).LOD_score
+        exp = MLOD.objects.get(metabolite_name = metabolite,marker_name = marker,gxe=gxe_,experiment_name = exp).LOD_score
         lod_list.append(float('{0:.2f}'.format(exp)))
     '''
     #calculate number of markers in each chromosome.
@@ -1285,7 +1311,7 @@ def genotypeUpload(f):
     Data integrity: Because the expression value of gene/trait in offspring RIL90 is missing, therefore the genotype of each marker in RIL90 will not be considered.   
     '''
     tic = time.clock()   
-    
+    exp_name = getExperimentName(f)
     ril_list = []
     i=0
     for line in getData(f):
@@ -1299,12 +1325,23 @@ def genotypeUpload(f):
             for marker in range(1,len(line)):
                 add_geno = Genotype(marker_name = Marker.objects.get(pk=line[0]),
                               ril_name =  ril_list[marker-1],
-                              genotype =  line[marker])
+                              genotype =  line[marker],
+                              experiment_name = exp_name)
                 add_geno.save()
     toc = time.clock()            
     print 'in %f seconds' % (toc-tic)
     print '%d records added' %i
 
+def getExperimentName(f):
+    
+    fname = f.name
+    match = re.findall(r'\D(\d{4}\D)',fname)
+    if len(match)==1:
+        ind = fname.index(match[0])
+        return fname[:ind+4]
+    else:
+        raise NameError("Invalid file name!")
+    
 
     
     

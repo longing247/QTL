@@ -212,17 +212,20 @@ var showDemo = function () {
   	-->
   </body>
 
-{% elif overlap_traits_list %}
-	<ul>
-    	{% for trait in overlap_traits_list %}
-			<li> {{trait.marker_name}} : {{trait.lod_score}} </li>
-		{% endfor %}
-	</ul>
-
 
 {% else %}
+
 	<form action="." method="get">
-		<input id="search_gene" name ="gene" type="text"/>
+		<label for="search_gene">Locus</label>
+		<input id="search_gene" name ="gene" type="text" required/>
+		<!-- 
+		<label for="thld">LOD threshold</label>
+		<input id="thld" name ="thld" type="text" required/></br> -->
+		<select id = "experiment" name = "experiment">
+			{% for exp in exps %}
+				<option value = "{{ exp }}">{{ exp }}</option>
+			{% endfor %}
+		</select>
 		<input type="submit" id="search_submit" value="Search" />
 
 	</form>
