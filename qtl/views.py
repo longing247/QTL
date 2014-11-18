@@ -225,85 +225,134 @@ def searchGeneView(request):
     fetch expression value in both parent and RIL population and present those value in bar chart respectively
     plot LOD scores of gene expression value along with chromosome (against marker)
     '''
-    if request.GET.get('gene') and request.GET.get('experiment'):      
+    if request.GET.get('gene') and request.GET.get('experiment'):     
         search_gene = request.GET.get('gene').encode('ascii','ignore').upper()
+       
         experiment = request.GET.get('experiment').encode('ascii','ignore') #returns experiment name like Ligterink_2014 which are used as filter in the query
         
+        
         if Gene.objects.filter(locus_identifier = search_gene).exists():
+            render_dic = {}
             gene = Gene.objects.get(locus_identifier = search_gene)
-            exp_list = Parent.objects.filter(locus_identifier = search_gene, experiment_name = experiment)
-            parent_type_list = []
-            expression_list = []
-            for exp in exp_list:
-                parent_type_list.append(exp.parent_type)
-                expression_list.append(decimalFormat(exp.expression))
+            is_parent_exp = False # expression profile of both parent
+            is_ril_exp = False # expression profile of RIL lines
+            is_lod_exp = False # correlation profile of gene expression and genomic variance 
+            is_gxp_exp = False # Gene expression phenotype
+            is_gxe_exp = False # Environmental effects on gene expression phenotype
             
-            ril_list = RIL.objects.filter(locus_identifier = search_gene,experiment_name = experiment).values('ril_type').annotate(average = Avg('ril_exp'))
-            ril_type_list = []
-            ril_avg_exp_list = []
             
-            for ril in ril_list:
-                ril_type_list.append(ril['ril_type'])
-                ril_avg_exp_list.append(decimalFormat(ril['average']))       
-            ril_avg_list = [ril_avg_exp_list]
-            
-            gxe_ = False
-            peak_marker,peak_lod = findPeak(search_gene,gxe_,experiment)
             js_search_gene = json.dumps(search_gene)
-            js_parent_type_list = json.dumps(parent_type_list)
-            js_express_list = json.dumps([expression_list],cls=DjangoJSONEncoder) 
-            js_ril_type_list = json.dumps(ril_type_list)
-            js_ril_avg_exp_list = json.dumps(ril_avg_list,cls=DjangoJSONEncoder) 
-            js_peak_marker= json.dumps(peak_marker)
-            js_peak_lod = json.dumps(decimalFormat(peak_lod),cls=DjangoJSONEncoder)  
-            marker_list,lod_list = marker_plot(search_gene,gxe_,experiment)
-            js_marker_list= json.dumps(marker_list)
-            js_lod_list_session = json.dumps(lod_list,cls=DjangoJSONEncoder)
-            js_lod_list = json.dumps([lod_list],cls=DjangoJSONEncoder)
-            
-            gxe_env = True
-            peak_marker_env,peak_lod_env = findPeak(search_gene,gxe_env,experiment)
-            js_peak_marker_env= json.dumps(peak_marker_env)
-            js_peak_lod_env = json.dumps(peak_lod_env,cls=DjangoJSONEncoder)
-            marker_env_list,lod_env_list = marker_plot(search_gene,gxe_env,experiment)
-            js_marker_env_list= json.dumps(marker_env_list)
-            js_lod_env_list = json.dumps([lod_env_list],cls=DjangoJSONEncoder)
-            js_lod_all_list = json.dumps([lod_list,lod_env_list],cls=DjangoJSONEncoder)
-            #it might be helpful to define request.session.set_expiry(value). 
+            render_dic['search_gene'] = js_search_gene 
             request.session['search_gene'] = js_search_gene.encode('ascii','ignore')[1:-1]   
-            request.session['peak_marker'] = js_peak_marker.encode('ascii','ignore')[1:-1]
-            request.session['peak_lod'] = js_peak_lod
-            #request.session['marker_list'] = js_marker_list
+            request.session['experiment_name'] = experiment 
+
+            render_dic['gene'] = gene#Gene instance returned from database 
+            # check whether parent expression data is asvailable.
+            if Parent.objects.filter(locus_identifier = search_gene, experiment_name = experiment).exists():
+                is_parent_exp = True
+                render_dic['is_parent_exp'] = is_parent_exp
+                
+            # check whether RIL lines expression data is available.
+            if RIL.objects.filter(locus_identifier = search_gene,experiment_name = experiment).exists():
+                is_ril_exp = True
+                render_dic['is_ril_exp'] = is_ril_exp        
+            
+            # check whether LOD lines expression data is available.
+            if LOD.objects.filter(locus_identifier = search_gene,experiment_name = experiment).exists():
+                is_lod_exp = True
+                render_dic['is_lod_exp'] = is_lod_exp
+            
+            if LOD.objects.filter(locus_identifier = search_gene,experiment_name = experiment,gxe=False).exists():
+                is_gxp_exp = True 
+                render_dic['is_gxp_exp'] = is_gxp_exp
+            
+            if LOD.objects.filter(locus_identifier = search_gene,experiment_name = experiment,gxe=True).exists():
+                is_gxe_exp = True
+                render_dic['is_gxe_exp'] = is_gxe_exp
+            
+            if is_parent_exp:         
+                exp_list = Parent.objects.filter(locus_identifier = search_gene, experiment_name = experiment)
+                parent_type_list = []
+                parent_expression_list = []
+                for exp in exp_list:
+                    parent_type_list.append(exp.parent_type)
+                    parent_expression_list.append(decimalFormat(exp.expression))
+                js_parent_type_list = json.dumps(parent_type_list)
+                parent_exp_list = [parent_expression_list]
+                js_parent_express_list = json.dumps(parent_exp_list,cls=DjangoJSONEncoder) 
+                render_dic['parent_type_list']=js_parent_type_list # parent type 
+                render_dic['parent_exp_list'] =js_parent_express_list # the corresponding expression value in parents of the searched gene
+            if is_ril_exp:
+                
+                ril_list = RIL.objects.filter(locus_identifier = search_gene,experiment_name = experiment).values('ril_type').annotate(average = Avg('ril_exp'))
+                ril_type_list = []
+                ril_avg_exp_list = []
+                
+                for ril in ril_list:
+                    ril_type_list.append(ril['ril_type'])
+                    ril_avg_exp_list.append(decimalFormat(ril['average']))       
+                ril_avg_list = [ril_avg_exp_list]
+                
+                js_ril_type_list = json.dumps(ril_type_list)
+                js_ril_avg_exp_list = json.dumps(ril_avg_list,cls=DjangoJSONEncoder) 
+                render_dic['js_ril_type_list']=js_ril_type_list # RIL type
+                render_dic['js_ril_avg_exp_list']=js_ril_avg_exp_list# the corresponding expression value in RILs of the searched gene            
+
+            if is_lod_exp:
+                lod_list = []
+                lod_env_list = []
+                marker_list =  []
+                if is_gxp_exp:
+                    gxe_=False
+                    peak_marker,peak_lod = findPeak(search_gene,gxe_,experiment)
+                    js_peak_marker= json.dumps(peak_marker)
+                    js_peak_lod = json.dumps(decimalFormat(peak_lod),cls=DjangoJSONEncoder)
+                    marker_list,lod_list = marker_plot(search_gene,gxe_,experiment)
+                    js_marker_list= json.dumps(marker_list)
+                    js_lod_list = json.dumps([lod_list],cls=DjangoJSONEncoder)
+                    render_dic['peak_marker_js'] =js_peak_marker # highest peak marker
+                    render_dic['peak_lod_js']=js_peak_lod# the LOD score of the highest peak marker
+                    render_dic['js_marker_list']=js_marker_list# markers along the chromosome 
+                    render_dic['js_lod_list']=js_lod_list # the corresponding LOD expression value of the searched gene/trait against the marker list. 
+                    request.session['peak_marker'] = js_peak_marker.encode('ascii','ignore')[1:-1]
+                    request.session['peak_lod'] = js_peak_lod
+                    
+                if is_gxe_exp:
+                    gxe_env = True
+                    peak_marker_env,peak_lod_env = findPeak(search_gene,gxe_env,experiment)
+                    js_peak_marker_env= json.dumps(peak_marker_env)
+                    js_peak_lod_env = json.dumps(peak_lod_env,cls=DjangoJSONEncoder)
+                    marker_env_list,lod_env_list = marker_plot(search_gene,gxe_env,experiment)
+                    js_marker_env_list= json.dumps(marker_env_list)
+                    js_lod_env_list = json.dumps([lod_env_list],cls=DjangoJSONEncoder)
+                    js_lod_all_list = json.dumps([lod_list,lod_env_list],cls=DjangoJSONEncoder)
+                         
+                    render_dic['js_peak_marker_env']=js_peak_marker_env # environment interaction peak marker
+                    render_dic['js_peak_lod_env']=js_peak_lod_env# environment interaction peak marker expression
+                    render_dic['js_marker_env_list']=js_marker_env_list#markers along the chromosome 
+                    render_dic['js_lod_env_list']=js_lod_env_list# he corresponding LOD expression value of the searched gene/trait with environmental interaction against the marker list.
+                    
+                    request.session['peak_marker_env'] = js_peak_marker_env.encode('ascii','ignore')[1:-1]
+                    request.session['peak_lod_env'] = js_peak_lod_env
+                
+                if is_gxp_exp and is_gxe_exp:
+                    js_marker_all_list= json.dumps(marker_list)
+                    js_lod_all_list = json.dumps([lod_list,lod_env_list],cls=DjangoJSONEncoder)
+                    render_dic['js_marker_all_list']=js_marker_all_list#markers along the chromosome 
+                    render_dic['js_lod_all_list']=js_lod_all_list# a list contain two lod expression (LOD G and LOD GxE) list elements
+                    
+                       
+            '''
             lod_str =  ''
             for lod in lod_list:
                 lod_str +=' '+str(lod)
             request.session['js_lod_list_session'] = json.dumps(lod_str[1:],cls=DjangoJSONEncoder)
-            request.session['experiment_name'] = experiment 
-            return render_to_response('qtl/gene.html',{'search_gene':js_search_gene,#searched gene
-                                                            'gene':gene,#Gene instance returned from database 
-                                                            'peak_marker_js': js_peak_marker, # highest peak marker
-                                                            'peak_lod_js':js_peak_lod,# the LOD score of the highest peak marker
-                                                            'js_marker_list':js_marker_list,# markers along the chromosome 
-                                                            'js_lod_list':js_lod_list, # the corresponding LOD expression value of the searched gene/trait against the marker list. 
-                                                            #'cor_list_js':cor_list_js, #calculate correlation between a certain trait and all the other genes.
-                                                            #'js_gene_list':js_gene_list,
-                                                            #'js_corr_list':js_corr_list,
-                                                            #'js_query_result':query_result,
-                                                            'js_peak_marker_env':js_peak_marker_env, # environment interaction peak marker
-                                                            'js_peak_lod_env':js_peak_lod_env,# environment interaction peak marker expression
-                                                            'js_marker_env_list':js_marker_env_list,#markers along the chromosome 
-                                                            'js_lod_env_list': js_lod_env_list,# he corresponding LOD expression value of the searched gene/trait with environmental interaction against the marker list.
-                                                            'js_lod_all_list': js_lod_all_list, # a list contain two lod expression (LOD G and LOD GxE) list elements
-                                                            'parent_type_list':js_parent_type_list, # parent type 
-                                                            'express_list': js_express_list, # the corresponding expression value in parents of the searched gene
-                                                            'js_ril_type_list':js_ril_type_list, # RIL type
-                                                            'js_ril_avg_exp_list':js_ril_avg_exp_list})# the corresponding expression value in RILs of the searched gene            
+            '''
+            return render_to_response('qtl/gene.html',render_dic)
+                                                            
+                                                                                        
         else:
             raise NameError('Query gene does not exist')
-        
-        
-        
-        
         
     else:
         exps = Experiment.objects.all().values_list('experiment_name',flat=True)
@@ -565,33 +614,6 @@ def searchMarkerView(request):
     else:
         return render_to_response('qtl/marker.html',{})
 
-def missingGene():
-    '''
-    fills up physical position of genes which are not given in TAIR9-genes with position.xlsx with fake data.
-    The missing gene profile was saved in the parent directory named missing.txt.
-    '''
-    miss_genes = Gene.objects.filter(start__isnull=True)
-    for gene in miss_genes:
-        prefix = gene.locus_identifier.encode('ascii','ignore').strip()[:-3]
-        suffix = int(gene.locus_identifier.encode('ascii','ignore').strip()[-3:])
-        print gene.locus_identifier 
-        for i in range(200):
-            k=1
-            suf = suffix-i-1
-            next_gene = prefix+str(suf)
-            if Gene.objects.filter(locus_identifier = next_gene).count() ==1:
-                next_=Gene.objects.get(locus_identifier = next_gene)
-                if not next_.start:
-                    k+=1
-                    continue
-                else:
-                    g = Gene.objects.get(locus_identifier = gene.locus_identifier)
-                    g.start = next_.end+(300*k)
-                    g.end = next_.end+(600*k)
-                    g.strand = next_.strand
-                    g.save()
-                    break
-    
 def eQTLPlotView(request):
     '''
     plot eQTL maping
@@ -673,7 +695,7 @@ def eQTLPlotView(request):
         nr_eQTL = len(peaks_list)#number of dectected eQTL
     
         output_dic['peaks'] = peaks_list
-        peaks_gene_list = [g.next() for k,g in itertools.groupby(peaks_list,lambda x:x['gene'])] 
+        peaks_gene_list = [g.next() for k,g in itertools.groupby(peaks_list,lambda x:x['gene'])]#sort peaks list by 'gene' 
         nr_gene = len(peaks_gene_list) # number of genes that the expression are likely to be regulated by eQTL
         pv = math.pow(10,-lod_thld)
         
@@ -811,7 +833,6 @@ def lodUpload(f):
     add_exp.save()
     marker_list = []  
     i=0
-    j = 0
     for line in getData(f):
         if 'QTL' in line[0]:
             for marker in range(1,len(line)):
@@ -821,6 +842,7 @@ def lodUpload(f):
             i+=1
             print i
             print line[0].upper()
+            
             for gene in range(1,len(line)):
                 
                 if Gene.objects.filter(locus_identifier=line[0].upper()).exists():         

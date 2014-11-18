@@ -12,6 +12,7 @@ class Gene(models.Model):
     start = models.IntegerField(blank = True)
     end = models.IntegerField(blank = True)
     strand = models.BooleanField(default=False,blank = True) # Django True: sense strand False: anti-sense strand or MySQL 1: sense strand 0: antisense strand
+    orientation = models.BooleanField(default=True,blank = True)
 
     def __unicode__(self):
         return self.locus_identifier

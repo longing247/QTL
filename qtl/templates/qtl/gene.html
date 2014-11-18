@@ -1,31 +1,59 @@
 {% extends 'base.html' %}
-
 {% block content %}
-
 {% if search_gene %}
-
 {% load staticfiles %}
 <link rel="stylesheet" href="{% static 'qtl/css/canvasXpress.css' %}" type="text/css"/>
-
 <script type="text/javascript" src="{% static 'qtl/js/canvasXpress.min.js' %}"></script>
 
 <script id='demoScript'> 
-var parent_type_list_js = {{ parent_type_list|safe }};
-var expression_list_js = {{ express_list|safe }};
+
+var search_gene_js = {{ search_gene|safe }};
+
+
+{% if is_ril_exp %}
+
 var ril_type_list_js = {{ js_ril_type_list|safe }};
 var ril_exp_list_js = {{ js_ril_avg_exp_list|safe }};
-var search_gene_js = {{ search_gene|safe }};
+
+{% endif %}
+
+{% if is_parent_exp %}
+
+var parent_type_list_js = {{ parent_type_list|safe }};
+var parent_exp_list_js = {{ parent_exp_list|safe }};
+
+{% endif %}
+
+
+{% if is_gxp_exp %}
+
 var marker_list_js = {{js_marker_list|safe}};
 var exp_list_js = {{js_lod_list|safe}};
+
+{% endif %}
+
+{% if is_gxe_exp %}
+
 var marker_env_list_js = {{js_marker_env_list|safe}};
+
 var exp_env_list_js = {{js_lod_env_list|safe}};
+
+{% endif %}
+
+{% if is_gxp_exp and is_gxe_exp %}
+var marker_all_list_js = {{js_marker_all_list|safe}};
 var exp_all_list_js = {{js_lod_all_list|safe}};
+
+{% endif %}
+
 var showDemo = function () {
+	
+	{% if is_parent_exp %}
     var cx1 = new CanvasXpress('canvas1',
       {
         'y':{
         	'smps' : parent_type_list_js,
-        	'data' : expression_list_js,
+        	'data' : parent_exp_list_js,
          	'vars' : ['Expression in parent']
         	}
      },
@@ -46,6 +74,10 @@ var showDemo = function () {
       'xAxis2Show': false
       }
     );
+    
+    {% endif %}
+    
+    {% if is_ril_exp %}
   
 	var cx2 = new CanvasXpress('canvas2',{
 	        'y':{
@@ -70,6 +102,10 @@ var showDemo = function () {
 	      'titleHeight': 60,
 	      'xAxis2Show': false}
 	);
+	{% endif %}
+	
+	{% if is_gxp_exp %}
+	
 	var cx3 = new CanvasXpress('canvas3',
 		      {		
 		        'y':{
@@ -97,7 +133,11 @@ var showDemo = function () {
 		      'xAxis2Show': false
 		      }
 	);
+	{% endif %}
 	//cx3.drawLine('dashed',18,18,613,613,'rgb(0,255,255)',10,'butt');
+	
+	{% if is_gxe_exp %}
+	
 	var cx4 = new CanvasXpress('canvas4',
 		      {		
 		        'y':{
@@ -125,6 +165,9 @@ var showDemo = function () {
 		      'xAxis2Show': false
 		      }
 	);
+	{% endif %}
+	
+	{% if is_gxp_exp and is_gxe_exp %}
 	var cx5 = new CanvasXpress('canvas5',
 		      {		
 		        'y':{
@@ -152,22 +195,18 @@ var showDemo = function () {
 		      'xAxis2Show': false
 		      }
 	);
+	{% endif %}
 }
 
 </script>
   <body onload="showDemo();">   
-  	<form action="overlap" method="get">
-		Enter threshold (optional):<input id="lod_threshold" name ="lod_thld" type="text"/> (Default threshold is set to 2.3 if you leave it blank) </br>
-		Enter other traits to check overlap (optional):<input id="target_trait" name ="trait" type="text"/> (Manually enter locus identifier if needed, separated with ',' in between if multiple loci)</br>
-		<input type="submit" id="search" value="Search overlap e-trait(s)"/></br>
-
-	</form>
+  	
   	<ul>
 	  	<li> You are search for {{ search_gene|safe }}</li>
 	  	<li> Gene model name: {{ gene.gene_model_name }} </li>
 	    <li> Gene model description: {{ gene.gene_model_description }} </li>
 		<li> Gene model type: {{ gene.gene_model_type }} </li>  
-		{% if gene.strand %}
+		{% if gene.orientation %}
 		<li> Gene coordinates: {{ gene.start }}-{{ gene.end }} Orientation: Forward </li>
 		{% else %}
 		<li> Gene coordinates: {{ gene.start }}-{{ gene.end }} Orientation: Reverse </li> 
@@ -181,6 +220,12 @@ var showDemo = function () {
 		<li> GxE Peak expression: {{ js_peak_lod_env|safe }} </li>
 		
 	</ul>
+	<form action="overlap" method="get">
+		Enter threshold (optional):<input id="lod_threshold" name ="lod_thld" type="text"/> (Default threshold is set to 2.3 if you leave it blank) </br>
+		Enter other traits to check overlap (optional):<input id="target_trait" name ="trait" type="text"/> (Manually enter locus identifier if needed, separated with ',' in between if multiple loci)</br>
+		<input type="submit" id="search" value="Search overlap e-trait(s)"/></br>
+
+	</form>
 	<div id="eQTL">
 	<p>eQTL plot</p>
 	<form action="eQTLPlot" method="get">
@@ -190,12 +235,21 @@ var showDemo = function () {
 	
 	</div>
     <div>
-    	
+    		{% if is_parent_exp %}
       		<canvas id='canvas1' width='540' height='540'></canvas>
+      		{% endif %}
+      		{% if is_ril_exp %}
       		<canvas id='canvas2' width='540' height='540'></canvas>
+      		{% endif %}
+      		{% if is_gxp_exp %}
       		<canvas id='canvas3' width='1080' height='540'></canvas>
+      		{% endif %}
+      		{% if is_gxe_exp %}
       		<canvas id='canvas4' width='1080' height='540'></canvas>
+      		{% endif %}
+      		{% if is_gxp_exp and is_gxe_exp %}
       		<canvas id='canvas5' width='1080' height='540'></canvas>
+      		{% endif %}
     </div>
     <!-- Entire correlation test -->
     <!--  
