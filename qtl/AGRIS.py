@@ -15,7 +15,7 @@ from io import StringIO
 sys.path.append('/home/jiao/QTL')
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'QTL.settings')
 
-from qtl.models import Gene,Marker,LOD
+from qtl.models import Gene,Marker,LOD,ExperimentMarker,Experiment
 
 class AGRISDB(object):
     '''
@@ -332,7 +332,20 @@ class AGRISDB(object):
             end = item
             count +=1
         yield start,end            
+    
+    @staticmethod 
+    def popEMTable(exp):
+        marker_query_list = LOD.objects.filter(experiment_name = exp).values('marker_name').distinct()
+        i = 0
+        for each in marker_query_list:
 
+            em = ExperimentMarker()
+            em.experiment_name = Experiment.objects.get(experiment_name = exp)
+            em.marker_name = Marker.objects.get(marker_name = each['marker_name'])
+            
+            em.save()
+            i+=1
+        print i
 
 if __name__=="__main__":
     
@@ -340,6 +353,9 @@ if __name__=="__main__":
     attfdb_pre = 'http://arabidopsis.med.ohio-state.edu/AtTFDB/tfsummary.html?locusid='
     attffamdb_pre = 'http://arabidopsis.med.ohio-state.edu/AtTFDB/tfbrowse.html?fam='  
     tair_pre = 'http://arabidopsis.org/servlets/TairObject?type=locus&name='
+    #AGRISDB.popEMTable('Ligterink_2014')
+    #AGRISDB.popEMTable('Keurentjes_2007')
+    #AGRISDB.popEMTable('Snoek_2012')
     #gene_list = AGRISDB.getGenes()
     #AGRISDB.getPosition(tair_pre,'dismatch.txt','output_dismatch.txt')  
     #AGRISDB.dismatch('physicalpos.txt','output_dismatch.txt') 
@@ -361,7 +377,7 @@ if __name__=="__main__":
     #print AGRISDB.isATGene(atcisdb_pre,'AT1G10100T')
     #print AGRISDB.isATGene(atcisdb_pre,'AT1G10100')
     #AGRISDB.getTF(attffamdb_pre,'Homeobox')
-    a = [1,2,3,4,5,6,7,8,9,0]
-    b = [2,3,5,6,0]
+    #a = [1,2,3,4,5,6,7,8,9,0]
+    #b = [2,3,5,6,0]
 
-    print (list(AGRISDB.test(a,b)))
+    #print (list(AGRISDB.test(a,b)))

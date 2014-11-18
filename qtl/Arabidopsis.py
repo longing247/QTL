@@ -16,7 +16,7 @@ class Arabidopsis:
                    ("Chr II", 19698289),#19698289
                    ("Chr III", 23459830),#23459830
                    ("Chr IV", 18585056),#18585056
-                   ("Chr V", 26985502 )]#26975502 
+                   ("Chr V", 27985502 )]#26975502 HAS TO CHANGE to avoid of assertion error
         
         max_len = 30432563 #Could compute this
         telomere_length = 1000000 #For illustration

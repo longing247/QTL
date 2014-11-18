@@ -11,7 +11,7 @@ import math
 sys.path.append('/home/jiao/QTL')
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'QTL.settings')
 
-from qtl.models import Gene,Marker,LOD
+from qtl.models import Gene,Marker,LOD,ExperimentMarker
 from django.db.models import Q
 
 class EQTLMapping:
@@ -91,7 +91,8 @@ class EQTLMapping:
         chr_start = {1:3631,2:1871,3:4342,4:1180,5:1251}
         chr_end = {1:30425192,2:19696821,3:23459800,4:18584524,5:26970641}
         
-        marker_queryset_list = LOD.objects.filter(experiment_name = self.experiment).values('marker_name').distinct()
+        marker_queryset_list = ExperimentMarker.objects.filter(experiment_name = self.experiment).values_list('marker_name',flat=True)
+        #marker_queryset_list = LOD.objects.filter(experiment_name = self.experiment).values('marker_name').distinct()
         marker_list = Marker.objects.filter(marker_name__in=marker_queryset_list).order_by('marker_chromosome','marker_cm')
         
         if len(self.eqtls)!=0:
@@ -177,7 +178,6 @@ class EQTLMapping:
                 extend_gene = Gene.objects.filter(locus_identifier__in=gene_all_list,chromosome = chr,start__gte=int_start,end__lte=int_end)
                 print chr,len(extend_gene)
                 gene_list.extend(extend_gene)
-
         return gene_list
                 
 if __name__=="__main__":
