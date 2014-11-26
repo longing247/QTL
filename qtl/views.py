@@ -21,7 +21,7 @@ from django.contrib import messages
 from django.db.models import Count, Avg, Q
 from django.core.serializers import serialize
 
-from .models import Experiment,Gene,Marker,LOD,Parent,RIL,Metabolite,MParent,MRIL,MLOD,Genotype,ExperimentMarker
+from .models import Experiment,Gene,Marker,LOD,Parent,RIL,Metabolite,MParent,MRIL,MLOD,Genotype,ExperimentMarker,ExperimentGene,ExperimentRIL,ExperimentParent,ExperimentMetabolite
 from .forms import GeneUploadFileForm,MarkerUploadFileForm, LODUploadFileForm,ParentUploadFileForm,RILUploadFileForm,MetaboliteUploadFileForm,MParentUploadFileForm,MRILUploadFileForm,MLODUploadFileForm,ENVLODUploadFileForm,ENVMLODUploadFileForm,GeneUpdateFileForm,GenotypeUploadFileForm
 
 from Arabidopsis import Arabidopsis
@@ -185,7 +185,7 @@ def chromosomeView(request):
     color_list = {1:'black',2:'blue',3:'Green',4:'purple',5:'cyan',6:'red'}
     features_list = {}
     j = 0
-    #marker_list_experiment = LOD.objects.filter(experiment_name = experiment,gxe=False).values('marker_name').distinct()
+
     marker_list_experiment = ExperimentMarker.objects.filter(experiment_name = experiment).values_list('marker_name',flat=True)
     for i in range(1,6):
         li = []        
@@ -658,6 +658,7 @@ def eQTLPlotView(request):
     
     '''
     if request.session['search_gene'] and request.session['experiment_name']:
+        tic = time.time()
         lod_thld = 2.3
         if request.GET.get('eQTL_lod_thld'):
             lod_thld = float(request.GET.get('eQTL_lod_thld').strip())
@@ -687,10 +688,14 @@ def eQTLPlotView(request):
         for i in range(chr_nr):
             chr_marker_list_dic[i+1] = list(getChrMarkers(i+1,marker_list))  #django.db.models.query.ValuesListQuerySet
         output_dic['pmarknames'] = chr_marker_list_dic
+        toc1 = time.time()
+        print 'getChrMarker in %f seconds' % (toc1-tic)
         
         # define KEY markers
         output_dic['markers'] = list(getMarkerNamesList(marker_list))
         
+        toc2 = time.time()
+        print 'getMarkerNamesList in %f seconds' % (toc2-tic)
         
         # define KEY pmark
         marker_list_dic = {}
@@ -701,13 +706,22 @@ def eQTLPlotView(request):
             marker_list_dic[m.marker_name] = m_info
         output_dic['pmark'] = marker_list_dic
         
+        toc3 = time.time()
+        print 'pmark info in %f seconds' % (toc3-tic)
         # define KEY gene
         gene_list_dic = {}
-        lod_gene_list = LOD.objects.filter(experiment_name = experiment).values('locus_identifier').distinct()
-        gene_queryset_list = Gene.objects.filter(locus_identifier__in=lod_gene_list).order_by('chromosome','start')
-        for gene in gene_queryset_list:     
-            gene_list_dic[gene.locus_identifier]={'chr':gene.chromosome,'pos_Mbp':float(gene.start)/1000000} 
+        lod_gene_list = ExperimentGene.objects.filter(experiment_name = experiment).values_list('locus_identifier',flat=True)
+        #gene_queryset_list = Gene.objects.filter(locus_identifier__in=lod_gene_list).order_by('chromosome','start')
+        print len(lod_gene_list)
+        counter = 0
+        for gene in lod_gene_list:   
+            gene_instance = Gene.objects.get(locus_identifier = gene)
+            gene_list_dic[gene]={'chr':gene_instance.chromosome,'pos_Mbp':float(gene_instance.start)/1000000} 
         output_dic['gene'] = gene_list_dic
+        
+        
+        toc4 = time.time()
+        print 'gene list in %f seconds' % (toc4-tic)
         
         # define KEY peaks
         #sha_lod_thld = -lod_thld
@@ -733,6 +747,9 @@ def eQTLPlotView(request):
         nr_eQTL = len(peaks_list)#number of dectected eQTL
     
         output_dic['peaks'] = peaks_list
+        
+        toc5 = time.time()
+        print 'QTL detection in %f seconds' % (toc5-tic)
         peaks_gene_list = [g.next() for k,g in itertools.groupby(peaks_list,lambda x:x['gene'])]#sort peaks list by 'gene' 
         nr_gene = len(peaks_gene_list) # number of genes that the expression are likely to be regulated by eQTL
         pv = math.pow(10,-lod_thld)
@@ -746,13 +763,15 @@ def eQTLPlotView(request):
             exp_dic['marker'] = exp.marker_name.marker_name#.encode('ascii','ignore')
             exp_dic['lod'] = float(exp.LOD_score)
             exp_list.append(exp_dic)
-        output_dic['exp'] = exp_list    
+        output_dic['exp'] = exp_list 
+        toc6 = time.time()
+        print 'LOD curve in %f seconds' % (toc6-tic)   
         output_dic_js = json.dumps(output_dic)
         search_gene = json.dumps(search_gene.upper())
         
         ########## output json file #########
-        with open('test1212.json','wb') as output:
-            json.dump(output_dic,output,indent = 4)
+        #with open('test1212.json','wb') as output:
+        #    json.dump(output_dic,output,indent = 4)
         return render_to_response('qtl/eQTL.html',{'output_dic_js':output_dic_js,
                                                    'search_gene': search_gene,
                                                    'lod_thld': lod_thld,
@@ -1249,20 +1268,7 @@ def findMPeak(metabolite,gxe_,exp):
 def yield_gene(gene_list):
     for gene in gene_list:
         yield gene
-        
-def exp_series(query_gene):
-    '''accumulate expression value per gene or qtl 
-    and cast to pandas Series object which will be later used in correlation calculation
-    '''
-    series_list = [] # expression list per gene or qtl
     
-    #select ril_exp from RIL where locus_identifier = query_gene;
-    exp_decimal = RIL.objects.filter(locus_identifier = query_gene).values_list('ril_exp', flat = True)# return Decimal object
-    for exp in exp_decimal:
-        exp_ = float('{0:.2f}'.format(exp)) # type 'float'      
-        series_list.append(exp_) 
-    
-    return pd.Series(series_list) #pandas Series object which will be later used in correlation calculation
 
 def marker_plot(gene_name,gxe_,experiment):
     '''
@@ -1311,26 +1317,6 @@ def m_marker_plot(metabolite,gxe_,experiment):
     '''
     return marker_list,lod_list
 
-
-def ril_correlation(query_gene):
-    '''calculate Pearson correlation value of a query gene/qtl against the rest 29000 genes/qtls.
-    It took about 8 mins to finish the entire proecess. 
-    '''
-    tic = time.time()
-    gene_list = Gene.objects.values_list('locus_identifier',flat=True) #to retrieve all the genes/qtls
-    #ril_list = RIL.objects.values_list('ril_name',flat = True) #to retrieve the names of RIL offsprings ***too redundant
-    cor_dic ={} 
-    pd_query_gene_exp_series = exp_series(query_gene)  
-    i=0
-    for gene in yield_gene(gene_list):
-        i+=1
-        #pd_target_gene_exp_series = exp_series(ril_list,gene.encode('ascii','ignore'))
-        pd_target_gene_exp_series = exp_series(gene)
-        cor_dic[gene.encode('ascii','ignore')] = pd_query_gene_exp_series.corr(pd_target_gene_exp_series) # calculate correlation of two series
-        print i,cor_dic[gene.encode('ascii','ignore')]
-    toc = time.time()
-    print 'in %f seconds' % (toc-tic)
-    return cor_dic
 
 def geneUpdate(f):
     '''

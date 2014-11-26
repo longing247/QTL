@@ -12,6 +12,12 @@ class Gene(models.Model):
     start = models.IntegerField(blank = True)
     end = models.IntegerField(blank = True)
     orientation = models.BooleanField(blank = True) # Django True: sense strand False: anti-sense strand or MySQL 1: sense strand 0: antisense strand
+    promoter_type = models.CharField(max_length =15, blank = True)
+    promoter_exam_org = models.CharField(max_length = 20,blank = True)
+    promoter_sequence = models.TextField(blank = True)
+    promoter_start = models.IntegerField(blank = True)
+    promoter_end = models.IntegerField(blank = True)
+    coding_sequence = models.TextField(blank = True) 
 
     def __unicode__(self):
         return self.locus_identifier
@@ -33,9 +39,7 @@ class Experiment(models.Model):
     def __unicode__(self):
         return self.experiment_name
     
-class ExperimentMarker(models.Model):
-    experiment_name = models.ForeignKey(Experiment)
-    marker_name = models.CharField(max_length=15)
+
     
 class LOD(models.Model):
     
@@ -69,10 +73,10 @@ class RIL(models.Model):
 
 
 class Genotype(models.Model):
-    ril_name = models.ForeignKey(Marker)
+    marker_name = models.CharField(max_length=15)
     ril_name = models.CharField(max_length=20)
     genotype = models.CharField(max_length=5,blank = True)# there might be some RIL populations missing genotype information. 
-    experiment_name = models.CharField(max_length=40,blank = True)
+    experiment_name = models.CharField(max_length=40)
 
 
 class Metabolite(models.Model):
@@ -105,4 +109,62 @@ class MLOD(models.Model):
     marker_name = models.ForeignKey(Marker)
     def __unicode__(self):
         return self.LOD_score
+    
+class ExperimentMarker(models.Model):
+    experiment_name = models.ForeignKey(Experiment)
+    marker_name = models.CharField(max_length=15)
 
+class ExperimentGene(models.Model):
+    experiment_name = models.ForeignKey(Experiment)
+    locus_identifier = models.CharField(max_length=30)
+    
+class ExperimentParent(models.Model):
+    experiment_name = models.ForeignKey(Experiment)
+    parent_name = models.CharField(max_length=20)
+
+class ExperimentRIL(models.Model):
+    experiment_name = models.ForeignKey(Experiment)
+    ril_name = models.CharField(max_length=20)
+
+class ExperimentMetabolite(models.Model):
+    experiment_name = models.ForeignKey(Experiment)
+    metabolite_name = models.CharField(max_length=50)
+    
+class TF_Family(models.Model):
+    tf_family_name = models.CharField(max_length = 30,primary_key = True)
+    description = models.TextField(blank=True) 
+
+class TF_Family_Ref(models.Model):
+    tf_family_name = models.ForeignKey(TF_Family)
+    reference = models.CharField(max_length = 200,blank = True)
+    author = models.CharField(max_length = 200,blank = True)
+    link = models.URLField(max_length = 200,blank = True)  
+
+class Protein(models.Model):
+    protein_name = models.CharField(max_length = 30,primary_key = True)
+    locus_identifier = models.ForeignKey(Gene)
+    protein_sequence = models.TextField(blank = True)
+    protein_desc = models.TextField(blank = True)
+    protein_symbol = models.CharField(max_length = 30,blank=True)
+    
+class Promoter_Binding_Site(models.Model):
+    locus_identifier = models.ForeignKey(Gene)
+    binding_site_name = models.CharField(max_length = 100)
+    binding_site_sequence = models.TextField()
+    chr = models.IntegerField()
+    start = models.IntegerField()
+    end = models.IntegerField()
+    tf_family_name = models.ForeignKey(TF_Family,blank = True)
+    motif = models.CharField(max_length = 100,blank = True)
+    bs_atcisdb_color = models.CharField(max_length = 10,blank = True)
+    
+class TF(models.Model): 
+    tf_family_name = models.ForeignKey(TF_Family)   
+    locus_name = models.CharField(max_length=30)
+    gene_name = models.CharField(max_length=100,blank = True)
+    description = models.CharField(max_length = 200,blank = True)
+    bs_name = models.CharField(max_length=100,blank = True)
+    motif = models.CharField(max_length = 100,blank = True)
+    reference = models.CharField(max_length = 200,blank = True)
+    author = models.CharField(max_length = 200,blank = True)
+    link = models.URLField(max_length = 200,blank = True)  
