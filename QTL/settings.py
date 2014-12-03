@@ -40,13 +40,7 @@ INSTALLED_APPS = (
     
 )
 
-HAYSTACK_CONNECTIONS = {
-    'default':{
-        'ENGINE': 'haystack.backends.whoosh_backend.WhooshEngine',
-        'PATH': os.path.join(os.path.dirname(__file__), 'whoosh_index'),
-    },
 
-}
 
 TEMPLATE_DIRS = [os.path.join(BASE_DIR, 'templates')]
 
@@ -97,6 +91,7 @@ USE_TZ = True
 # Example: "/home/media/media.lawrence.com/media/"
 #MEDIA_ROOT = os.path.join(BASE_DIR,'/media/')
 MEDIA_ROOT = '/home/jiao/workplace/QTL/QTL/media/'
+#MEDIA_ROOT = '/mnt/geninf15/prog/www/django/QTL/QTL/media' # server production
 
 # URL that handles the media served from MEDIA_ROOT. Make sure to use a
 # trailing slash.
@@ -105,5 +100,9 @@ MEDIA_URL = '/qtl/'
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.6/howto/static-files/
-
+#STATIC_ROOT = '/mnt/geninf15/prog/www/django/QTL/qtl/static'
 STATIC_URL = '/static/'
+#STATICFILES_DIRS = (
+#                    '/mnt/geninf15/prog/www/django/QTL/qtl/static',
+#                    )
+

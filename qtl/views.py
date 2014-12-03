@@ -1,9 +1,6 @@
 import time,os
-import numpy as np
 import csv
 import json
-import pandas as pd
-import logging
 import math
 import re
 import itertools
@@ -323,7 +320,7 @@ def searchGeneView(request):
                     gxe_env = True
                     peak_marker_env,peak_lod_env = findPeak(search_gene,gxe_env,experiment)
                     js_peak_marker_env= json.dumps(peak_marker_env)
-                    js_peak_lod_env = json.dumps(peak_lod_env,cls=DjangoJSONEncoder)
+                    js_peak_lod_env = json.dumps(float('{0:.2f}'.format(peak_lod_env)),cls=DjangoJSONEncoder)
                     marker_env_list,lod_env_list = marker_plot(search_gene,gxe_env,experiment)
                     js_marker_env_list= json.dumps(marker_env_list)
                     js_lod_env_list = json.dumps([lod_env_list],cls=DjangoJSONEncoder)
@@ -342,8 +339,64 @@ def searchGeneView(request):
                     js_lod_all_list = json.dumps([lod_list,lod_env_list],cls=DjangoJSONEncoder)
                     render_dic['js_marker_all_list']=js_marker_all_list#markers along the chromosome 
                     render_dic['js_lod_all_list']=js_lod_all_list# a list contain two lod expression (LOD G and LOD GxE) list elements
-                    
-                       
+                          
+            exps = Experiment.objects.exclude(experiment_name = experiment)
+            if exps.exists():
+                exps_name_list = list (exps.values_list('experiment_name',flat = True))
+                exps_lod_list = []
+                exp_mul_list = []
+                markers_list = list(Marker.objects.all().order_by('marker_chromosome','marker_cm').values_list('marker_name', flat = True))
+                for exp_name in exps_name_list:
+                    one_lod_list = []
+                    if LOD.objects.filter(locus_identifier = search_gene,experiment_name = exp_name,gxe = 0).exists():
+                        for marker in markers_list:
+                            if LOD.objects.filter(locus_identifier = search_gene, marker_name = marker,experiment_name = exp_name,gxe =0).exists():
+                                gxe_lod = LOD.objects.get(locus_identifier = search_gene, marker_name = marker,experiment_name = exp_name,gxe =0).LOD_score
+                                one_lod_list.append(float('{0:.2f}'.format(gxe_lod)))
+                            else:
+                                one_lod_list.append(None) 
+                        exps_lod_list.append(one_lod_list)
+                        one_lod_list = []
+                        exp_mul_list.append(exp_name)
+                    if LOD.objects.filter(locus_identifier = search_gene,experiment_name = exp_name,gxe = 1).exists():
+                        for marker in markers_list:
+                            if LOD.objects.filter(locus_identifier = search_gene, marker_name = marker,experiment_name = exp_name,gxe =1).exists():
+                                gxe_lod = LOD.objects.get(locus_identifier = search_gene, marker_name = marker,experiment_name = exp_name,gxe =1).LOD_score
+                                one_lod_list.append(float('{0:.2f}'.format(gxe_lod)))
+                            else:
+                                one_lod_list.append(None)
+                        exps_lod_list.append(one_lod_list)
+                        one_lod_list = []
+                        exp_mul_list.append(exp_name+'GxE')       
+                if is_lod_exp:
+                    if is_gxp_exp:
+                        one_lod_list = []
+                        for marker in markers_list:
+                            if LOD.objects.filter(locus_identifier = search_gene, marker_name = marker,experiment_name = experiment,gxe =0).exists():
+                                gxe_lod = LOD.objects.get(locus_identifier = search_gene, marker_name = marker,experiment_name = experiment,gxe =0).LOD_score
+                                one_lod_list.append(float('{0:.2f}'.format(gxe_lod)))
+                            else:
+                                one_lod_list.append(None)
+                        exps_lod_list.append(one_lod_list)
+                        exp_mul_list.append(experiment)
+                    if is_gxe_exp:
+                        one_lod_list = []
+                        for marker in markers_list:
+                            if LOD.objects.filter(locus_identifier = search_gene, marker_name = marker,experiment_name = experiment,gxe =1).exists():
+                                gxe_lod = LOD.objects.get(locus_identifier = search_gene, marker_name = marker,experiment_name = experiment,gxe =1).LOD_score
+                                one_lod_list.append(float('{0:.2f}'.format(gxe_lod)))
+                                one_lod_list.append(None)
+                        exps_lod_list.append(one_lod_list)
+                        exp_mul_list.append(experiment+'GxE')
+                js_marker_mul_list= json.dumps(markers_list)
+                js_lod_mul_list = json.dumps(exps_lod_list,cls=DjangoJSONEncoder)
+                js_exp_mul_list = json.dumps(exp_mul_list)
+                render_dic['js_marker_mul_list']=js_marker_mul_list#markers along the chromosome 
+                render_dic['js_lod_mul_list']=js_lod_mul_list# he corresponding LOD expression value of the searched gene/trait with environmental interaction against the marker list.
+                render_dic['js_exp_mul_list'] = js_exp_mul_list
+                render_dic['is_multi_exp'] = True
+                
+            
             
             lod_str =  ''
             for lod in lod_list:

@@ -1,10 +1,18 @@
 {% extends 'base.html' %}
 {% block content %}
-{% if search_gene %}
 {% load staticfiles %}
 <link rel="stylesheet" href="{% static 'qtl/css/canvasXpress.css' %}" type="text/css"/>
+<link rel="stylesheet" href="{% static 'qtl/css/jquery-ui.min.css' %}" type="text/css"/>
 <script type="text/javascript" src="{% static 'qtl/js/canvasXpress.min.js' %}"></script>
+<script type="text/javascript" src="{% static 'qtl/js/jquery.min.js' %}"></script>
+<script type="text/javascript" src="{% static 'qtl/js/jquery-ui.min.js' %}"></script>
 
+<script>
+$(function(){
+	$( document ).tooltip();
+});
+</script>
+{% if search_gene %}
 <script id='demoScript'> 
 
 var search_gene_js = {{ search_gene|safe }};
@@ -45,6 +53,14 @@ var marker_all_list_js = {{js_marker_all_list|safe}};
 var exp_all_list_js = {{js_lod_all_list|safe}};
 
 {% endif %}
+
+{% if is_multi_exp %}
+var marker_mul_list_js = {{js_marker_mul_list|safe}};
+var lod_mul_list_js = {{js_lod_mul_list|safe}};
+var exp_mul_list_js = {{js_exp_mul_list|safe}};
+
+{% endif %}
+
 
 var showDemo = function () {
 	
@@ -115,7 +131,19 @@ var showDemo = function () {
 				 	'desc' : ['LOD G']
 		        }
 		      },
-		  	     
+		  	  
+		      {'colorScheme': 'basic',
+			       'graphOrientation': 'vertical',
+			       'graphType': 'Line',
+			       'lineType': 'spline',
+			       'showAnimation': false,
+			       //'showAnimation': true,
+			       'showShadow': true,
+				   'smpTitle': 'LOD curve',
+			       'smpTitleFontStyle': 'italic',
+			       'title': search_gene_js,
+			       'titleHeight': 80}
+		      /*
 		      {'axisTickFontStyle': 'bold',
 		      'axisTickScaleFontFactor': 1.5,
 		      'axisTitleFontStyle': 'italic',
@@ -131,7 +159,7 @@ var showDemo = function () {
 		      'title': search_gene_js,
 		      'titleHeight': 60,
 		      'xAxis2Show': false
-		      }
+		      }*/
 	);
 	{% endif %}
 	//cx3.drawLine('dashed',18,18,613,613,'rgb(0,255,255)',10,'butt');
@@ -147,7 +175,7 @@ var showDemo = function () {
 				 	'desc' : ['LOD GxE']
 		        }
 		      },
-		  	     
+		  	  /*   
 		      {'axisTickFontStyle': 'bold',
 		      'axisTickScaleFontFactor': 1.5,
 		      'axisTitleFontStyle': 'italic',
@@ -163,7 +191,18 @@ var showDemo = function () {
 		      'title': search_gene_js,
 		      'titleHeight': 60,
 		      'xAxis2Show': false
-		      }
+		      }*/
+		      {'colorScheme': 'basic',
+			       'graphOrientation': 'vertical',
+			       'graphType': 'Line',
+			       'lineType': 'spline',
+			       'showAnimation': false,
+			       //'showAnimation': true,
+			       'showShadow': true,
+				   'smpTitle': 'LOD curve',
+			       'smpTitleFontStyle': 'italic',
+			       'title': search_gene_js,
+			       'titleHeight': 80}
 	);
 	{% endif %}
 	
@@ -177,7 +216,7 @@ var showDemo = function () {
 				 	'desc' : ['LOD']
 		        }
 		      },
-		  	     
+		  	  /*   
 		      {'axisTickFontStyle': 'bold',
 		      'axisTickScaleFontFactor': 1.5,
 		      'axisTitleFontStyle': 'italic',
@@ -193,7 +232,43 @@ var showDemo = function () {
 		      'title': search_gene_js,
 		      'titleHeight': 60,
 		      'xAxis2Show': false
-		      }
+		      }*/
+		      {'colorScheme': 'basic',
+			   'graphOrientation': 'vertical',
+			   'graphType': 'Line',
+			   'lineType': 'spline',
+			   'showAnimation': false,
+			   //'showAnimation': true,
+			   'showShadow': true,
+			   'smpTitle': 'LOD curve',
+			   'smpTitleFontStyle': 'italic',
+			   'title': search_gene_js,
+			   'titleHeight': 80}
+	);
+	{% endif %}
+	
+	{% if is_multi_exp %}
+	var cx6 = new CanvasXpress('canvas6',
+		      {		
+		        'y':{
+		        	'smps' : marker_mul_list_js,
+		        	'data' : lod_mul_list_js,
+		         	'vars' : exp_mul_list_js,
+				 	'desc' : ['LOD']
+		        }
+		      },
+		  
+		      {'colorScheme': 'basic',
+			   'graphOrientation': 'vertical',
+			   'graphType': 'Line',
+			   'lineType': 'spline',
+			   'showAnimation': false,
+			   //'showAnimation': true,
+			   'showShadow': true,
+			   'smpTitle': 'LOD curve',
+			   'smpTitleFontStyle': 'italic',
+			   'title': search_gene_js,
+			   'titleHeight': 80}
 	);
 	{% endif %}
 }
@@ -214,22 +289,22 @@ var showDemo = function () {
 		<li> Primary_gene_symbol {{ gene.primary_gene_symbol }}</li>
 		<li> All_gene_symbols {{ gene.all_gene_symbols }} </li>	
 		<li> Peak expression: {{ peak_lod_js|safe }} </li>
-		<li> Peak marker: <a href ="chromosome">{{ peak_marker_js|safe }}</a> [hint: click the peak marker link to see the location on the chromosome] </li>
+		<li> Peak marker: <a href ="chromosome" title = "[hint: click the peak marker link to see the location on the chromosome]">{{ peak_marker_js|safe }}</a> </li>
 		<li> Peak expression: {{ peak_lod_js|safe }} </li>
 		<li> GxE peak marker: {{ js_peak_marker_env|safe }} </li>
 		<li> GxE Peak expression: {{ js_peak_lod_env|safe }} </li>
 		
 	</ul>
 	<form action="overlap" method="get">
-		Enter threshold (optional):<input id="lod_threshold" name ="lod_thld" type="text"/> (Default threshold is set to 2.3 if you leave it blank) </br>
-		Enter other traits to check overlap (optional):<input id="target_trait" name ="trait" type="text"/> (Manually enter locus identifier if needed, separated with ',' in between if multiple loci)</br>
+		Enter threshold (optional):<input id="lod_threshold" title = "Default threshold is set to 2.3 if you leave it blank" name ="lod_thld" type="text"/> </br>
+		Enter other traits to check overlap (optional):<input id="target_trait" title = "Manually enter locus identifier if needed, separated with ',' in between if multiple loci" name ="trait" type="text"/> </br>
 		<input type="submit" id="search" value="Search overlap e-trait(s)"/></br>
 
 	</form>
 	<div id="eQTL">
 	<p>eQTL plot</p>
 	<form action="eQTLPlot" method="get">
-		Enter threshold (optional):<input id="eQTL_lod_threshold" name ="eQTL_lod_thld" type="text"/> (Default threshold is set to 2.3 if you leave it blank) </br>
+		Enter threshold (optional):<input id="eQTL_lod_threshold" title = "Default threshold is set to 2.3 if you leave it blank" name ="eQTL_lod_thld" type="text"/> </br>
 		<input type="submit" id="search" value="generate eQTL plot"/></br>
 	</form>
 	
@@ -249,6 +324,9 @@ var showDemo = function () {
       		{% endif %}
       		{% if is_gxp_exp and is_gxe_exp %}
       		<canvas id='canvas5' width='1080' height='540'></canvas>
+      		{% endif %}
+      		{% if is_multi_exp %}
+      		<canvas id='canvas6' width='1080' height='540'></canvas>
       		{% endif %}
     </div>
     <!-- Entire correlation test -->
@@ -271,7 +349,7 @@ var showDemo = function () {
 
 	<form action="." method="get">
 		<label for="search_gene">Locus</label>
-		<input id="search_gene" name ="gene" type="text" required/>
+		<input id="search_gene" title = "Locus ID i.e.AT1G01010, At3G50500" name ="gene" type="text" required/>
 		<!-- 
 		<label for="thld">LOD threshold</label>
 		<input id="thld" name ="thld" type="text" required/></br> -->
@@ -281,7 +359,6 @@ var showDemo = function () {
 			{% endfor %}
 		</select>
 		<input type="submit" id="search_submit" value="Search" />
-
 	</form>
 {% endif %}
 {% endblock %}

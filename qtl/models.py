@@ -1,5 +1,12 @@
 from django.db import models
 
+class Experiment(models.Model):
+
+    experiment_name=models.CharField(max_length=50,primary_key=True)
+    
+    def __unicode__(self):
+        return self.experiment_name
+
 class Gene(models.Model):
     
     locus_identifier = models.CharField(max_length=30,primary_key=True) #AT1G01480
@@ -31,15 +38,6 @@ class Marker(models.Model):
 
     def __unicode__(self):
         return self.marker_name
-
-class Experiment(models.Model):
-
-    experiment_name=models.CharField(max_length=50,primary_key=True)
-    
-    def __unicode__(self):
-        return self.experiment_name
-    
-
     
 class LOD(models.Model):
     
