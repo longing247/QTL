@@ -14,9 +14,9 @@
 {% else %}
 
 	<form action="." method="get">
-		<input id="search_marker" name ="marker" type="text"/>
+		<label for="search_marker">Marker name</label>
+		<input id="search_marker" title = "i.e. KI9I" name ="marker" type="text"/>
 		<input type="submit" id="search_submit" value="Search" />
-
 	</form>
 {% endif %}
 {% endblock %}

@@ -2,16 +2,8 @@
 {% block content %}
 {% load staticfiles %}
 <link rel="stylesheet" href="{% static 'qtl/css/canvasXpress.css' %}" type="text/css"/>
-<link rel="stylesheet" href="{% static 'qtl/css/jquery-ui.min.css' %}" type="text/css"/>
 <script type="text/javascript" src="{% static 'qtl/js/canvasXpress.min.js' %}"></script>
-<script type="text/javascript" src="{% static 'qtl/js/jquery.min.js' %}"></script>
-<script type="text/javascript" src="{% static 'qtl/js/jquery-ui.min.js' %}"></script>
 
-<script>
-$(function(){
-	$( document ).tooltip();
-});
-</script>
 {% if search_gene %}
 <script id='demoScript'> 
 

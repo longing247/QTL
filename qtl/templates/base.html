@@ -4,7 +4,14 @@
 <meta charset="UTF-8">
 {% load staticfiles %}
 <link rel="stylesheet" href="{% static 'qtl/css/style.css' %}" type="text/css"/>
-
+<link rel="stylesheet" href="{% static 'qtl/css/jquery-ui.min.css' %}" type="text/css"/>
+<script type="text/javascript" src="{% static 'qtl/js/jquery.min.js' %}"></script>
+<script type="text/javascript" src="{% static 'qtl/js/jquery-ui.min.js' %}"></script>
+<script>
+$(function(){
+	$( document ).tooltip();
+});
+</script>
 <title>Arabidopsis Thaliana QTL database</title>
 </head>
 <body>
