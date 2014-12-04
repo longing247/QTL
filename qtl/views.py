@@ -179,6 +179,9 @@ def uploadView(request):
 def indexView(request):
     return render_to_response('qtl/index.html',{})
 
+def aboutView(request):
+    return render_to_response('qtl/about.html',{})
+
 def chromosomeView(request):
     search_gene = request.session['search_gene']
     lod_list = request.session['js_lod_list_session'][1:-1].split(" ")

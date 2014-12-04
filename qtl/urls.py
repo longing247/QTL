@@ -10,6 +10,7 @@ from django.conf import settings
 
 
 urlpatterns = patterns('',
+    url(r'^about/$',views.aboutView,name='aboutView'),
     url(r'^upload/$',views.uploadView,name='uploadView'),   
     url(r'^upload/success/$',views.upload_success,name='uploadSuccessView'),                 
     url(r'^gene/success/$',views.upload_success,name='uploadSuccessView'),  
@@ -24,5 +25,6 @@ urlpatterns = patterns('',
     url(r'^gene/eQTLPlot/$',views.eQTLPlotView,name='eQTL'),
     url(r'^chromosome/success/$',views.upload_success,name='success'),
     url(r'^documentation/$',views.documentationView,name='documentation'),
+    
     ) 
 #+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

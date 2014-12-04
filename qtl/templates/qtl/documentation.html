@@ -1,7 +1,81 @@
 {% extends 'base.html' %}
-
 {% block content %}
+{% load staticfiles %}
+<script> 
+PreviewImage = function(uri) {
 
-To be added up!
+	  //Get the HTML Elements
+	  imageDialog = $("#dialog");
+	  imageTag = $('#image');
+
+	  //Split the URI so we can get the file name
+	  uriParts = uri.split("/");
+
+	  //Set the image src
+	  imageTag.attr('src', uri);
+
+	  //When the image has loaded, display the dialog
+	  imageTag.load(function(){
+
+	    $('#dialog').dialog({
+	      modal: true,
+	      resizable: false,
+	      draggable: false,
+	      width: 'auto',
+	      title: uriParts[uriParts.length - 1]
+	    });
+	  });   
+	}
+	
+</script> 
+<script> 
+$(document).ready(function() {
+
+  $('body a').click(function(event){
+
+    event.preventDefault();
+    PreviewImage($(this).attr('href'));
+
+  });               
+});
+</script> 
+<h1>QTL database workbench</h1>
+
+<div id="dialog" title="An image!" style = "display: none;">
+	<img id = "image" src = ""/>
+</div>
+
+<div id = "visualization" class = "qtl_doc">
+
+<h2>Visualization of the current available databsets</h2>
+
+<h3>EQTL visualization(<a href = "http://137.224.100.212/qtl/gene">137.224.100.212/qtl/gene<a>)</h3>
+
+<p>Enter one locus identifier of a gene (i.e. AT1G09950). By clicking the search button, it redirects you to another page which tells <a id="image1" href="{% static 'qtl/pic/qtl_doc_gene_desc.png' %}">Gene desciption</a>,
+<a id="image2" href="{% static 'qtl/pic/qtl_doc_parent.png' %}">Parent expression</a>,
+<a id="image3" href="{% static 'qtl/pic/qtl_doc_ril.png' %}">RIL lines expression</a>.
+<br>
+<h3> Genes that have overlap QTL</h3>
+<p>Assumption: 
+The causal gene located underneath the eQTL is likely to show correlation in expression levels with the gene that mapped to its positioin. 
+Genes involved in the same biological process mapping to the same position indicates that many of them might be under the control of a same gene.
+</p> 
+
+<p>By entering LOD cutoff and locus ID of target genes (Both are optional), <a id="image4" href="{% static 'qtl/pic/qtl_doc_corelation.png' %}">highly correlated genes</a> which have the same eQTL are presented in the <a id="image5" href="{% static 'qtl/pic/qtl_doc_overlap_eQTL.png' %}">LOD profile plot</a>. 
+
+<h3>cis/trans- eQTL plot</h3>
+
+<p> <a id="image5" href="{% static 'qtl/pic/qtl_doc_cis_trans_eqtl_plot.png' %}">Overall cis/trans- eQTL plot</a> </p>
+<p> Another <a id="image6" href="{% static 'qtl/pic/qtl_doc_lod_curve_d3.png' %}">LOD-curve plot</a> with additional information of the physical position of the queried gene.
+
+</div>
+<h2>Genetic markers</h2>
+<p><a href = "http://137.224.100.212/qtl/marker">137.224.100.212/qtl/marker<a></p>
+</div>
+<div id = "metabolite" class = "qtl_doc">
+<h2> Primary metabolites </h2>
+<p><a href = "http://137.224.100.212/qtl/metabolite">137.224.100.212/qtl/metabolite<a></p>
+
+</div>
 
 {% endblock %}
