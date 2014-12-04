@@ -34,7 +34,7 @@ class Marker(models.Model):
     marker_name = models.CharField(max_length=15, primary_key=True) #PVV4.1
     marker_chromosome = models.IntegerField()#1
     marker_cm = models.DecimalField(max_digits = 4, decimal_places =1)#101.6 
-    marker_phys_pos = models.DecimalField(max_digits = 13, decimal_places =10)#0.008639
+    marker_phys_pos = models.DecimalField(max_digits = 9, decimal_places =6)#0.008639
 
     def __unicode__(self):
         return self.marker_name

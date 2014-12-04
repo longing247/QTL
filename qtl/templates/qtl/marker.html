@@ -2,6 +2,19 @@
 
 {% block content %}
 
+{% load staticfiles %}
+<link rel="stylesheet" href="{% static 'qtl/css/jquery.dataTables.css' %}" type="text/css"/>
+<link rel="stylesheet" href="{% static 'qtl/css/shCore.css' %}" type="text/css"/>
+
+<script type="text/javascript" src="{% static 'qtl/js/jquery.dataTables.min.js' %}"></script>
+<script type="text/javascript" src="{% static 'qtl/js/shCore.js' %}"></script>
+<script type="text/javascript" src="{% static 'qtl/js/demo.js' %}"></script>
+<script type="text/javascript" language = "javascript" class = "init">
+
+$(document).ready(function(){
+	$( marker_table ).DataTable();
+});
+</script>
 {% if marker %}
 
 <ul>
@@ -15,8 +28,36 @@
 
 	<form action="." method="get">
 		<label for="search_marker">Marker name</label>
-		<input id="search_marker" title = "i.e. KI9I" name ="marker" type="text"/>
+		<input id="search_marker" title = "i.e. K9I9" name ="marker" type="text"/>
 		<input type="submit" id="search_submit" value="Search" />
 	</form>
 {% endif %}
+	<table id="marker_table" class = "display" cellspacing = "0" width = "60">
+		<thead>
+			<tr>
+				<th>Marker_name</th>
+				<th>Chromosome</th>
+				<th>Marker cm</th>
+				<th>physical position (Mbp)</th>
+			</tr>
+		</thead>
+		<tfoot>
+			<tr>
+				<th>marker_name</th>
+				<th>chromosome</th>
+				<th>marker_cm</th>
+				<th>Physical position</th>
+			</tr>
+		</tfoot>
+		<tbody>
+			{% for marker in markers %}
+				<tr>
+					<td>{{ marker.marker_name }}</td>
+					<td>{{ marker.marker_chromosome }}</td>
+					<td>{{ marker.marker_cm }}</td>
+					<td>{{ marker.marker_phys_pos }}</td>
+				</tr>
+			{% endfor %}
+		</tbody>	
+
 {% endblock %}

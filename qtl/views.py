@@ -707,7 +707,8 @@ def searchMarkerView(request):
         
         return render_to_response('qtl/marker.html',context_dict)
     else:
-        return render_to_response('qtl/marker.html',{})
+        markers = Marker.objects.all().order_by('marker_chromosome','marker_cm')
+        return render_to_response('qtl/marker.html',{'markers': markers})
 
 def eQTLPlotView(request):
     '''
