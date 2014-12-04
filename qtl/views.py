@@ -26,8 +26,9 @@ from MySQLCorrelation import mysqlCorrelationAll,mysqlCorrelationSingle
 from ViewsFunc import getMarkersList,getMarkerNamesList,getMarkerNamesList,getChrMarkers,geneUpload,markerUpload,lodUpload,parentUpload,rilUpload
 from ViewsFunc import getAll,getAllMetabolite,getData,metaboliteUpload,metaboliteParentUpload,metaboliteRILUpload,metaboliteLODUpload,envLODUpload,envMLODUpload
 from ViewsFunc import findPeak,findMPeak,yield_gene,marker_plot,m_marker_plot,geneUpdate,decimalFormat,genotypeUpload,getExperimentName
+from Imputer import impute
 
-#from OutputJson import outputJson
+
 '''
 WUR Seed Lab eQTL expression dataset was used for test purpose. 
 The derived files: gene_test.txt, marker_test.txt, lod_test.txt, and etc are all from the original datadataset.
@@ -358,7 +359,8 @@ def searchGeneView(request):
                                 gxe_lod = LOD.objects.get(locus_identifier = search_gene, marker_name = marker,experiment_name = exp_name,gxe =0).LOD_score
                                 one_lod_list.append(float('{0:.2f}'.format(gxe_lod)))
                             else:
-                                one_lod_list.append(None) 
+                                one_lod_list.append('NaN') 
+                        one_lod_list = impute(one_lod_list,missing_values = 'NaN')
                         exps_lod_list.append(one_lod_list)
                         one_lod_list = []
                         exp_mul_list.append(exp_name)
@@ -368,7 +370,8 @@ def searchGeneView(request):
                                 gxe_lod = LOD.objects.get(locus_identifier = search_gene, marker_name = marker,experiment_name = exp_name,gxe =1).LOD_score
                                 one_lod_list.append(float('{0:.2f}'.format(gxe_lod)))
                             else:
-                                one_lod_list.append(None)
+                                one_lod_list.append('NaN')
+                        one_lod_list = impute(one_lod_list,missing_values = 'NaN')
                         exps_lod_list.append(one_lod_list)
                         one_lod_list = []
                         exp_mul_list.append(exp_name+'GxE')       
@@ -380,7 +383,8 @@ def searchGeneView(request):
                                 gxe_lod = LOD.objects.get(locus_identifier = search_gene, marker_name = marker,experiment_name = experiment,gxe =0).LOD_score
                                 one_lod_list.append(float('{0:.2f}'.format(gxe_lod)))
                             else:
-                                one_lod_list.append(None)
+                                one_lod_list.append('NaN')
+                        one_lod_list = impute(one_lod_list,missing_values = 'NaN')
                         exps_lod_list.append(one_lod_list)
                         exp_mul_list.append(experiment)
                     if is_gxe_exp:
@@ -389,7 +393,8 @@ def searchGeneView(request):
                             if LOD.objects.filter(locus_identifier = search_gene, marker_name = marker,experiment_name = experiment,gxe =1).exists():
                                 gxe_lod = LOD.objects.get(locus_identifier = search_gene, marker_name = marker,experiment_name = experiment,gxe =1).LOD_score
                                 one_lod_list.append(float('{0:.2f}'.format(gxe_lod)))
-                                one_lod_list.append(None)
+                                one_lod_list.append('NaN')
+                        one_lod_list = impute(one_lod_list,missing_values = 'NaN')
                         exps_lod_list.append(one_lod_list)
                         exp_mul_list.append(experiment+'GxE')
                 js_marker_mul_list= json.dumps(markers_list)
@@ -722,7 +727,7 @@ def eQTLPlotView(request):
         lod_thld = 2.3
         if request.GET.get('eQTL_lod_thld'):
             lod_thld = float(request.GET.get('eQTL_lod_thld').strip())
-        search_gene = request.session['search_gene']
+        search_2gene = request.session['search_gene']
         experiment = request.session['experiment_name']
         # output_dic will be used to generate JSON file.
         output_dic = {}
