@@ -513,7 +513,7 @@ def searchOverlapQTLView(request):
             corr = {}
             if request.GET.get('lod_thld').strip().isdigit():  
                 lod_thld = request.GET.get('lod_thld').strip()
-            overlap_traits = LOD.objects.filter(LOD_score__gte = lod_thld, marker_name = peak_marker,gxe=gxe_,experiment_name=experiment).exclude(locus_identifier = search_gene).order_by('-LOD_score')[:5]
+            overlap_traits = LOD.objects.filter(LOD_score__gte = lod_thld, marker_name = peak_marker,gxe=gxe_,experiment_name=experiment).exclude(locus_identifier = search_gene).order_by('-LOD_score')#[:5]
             #counter = 1 # default: present the expression value of the top 5 co-regulated traits along the chromosome in the same figure
             for trait in overlap_traits:
                 marker_list,lod_list = marker_plot(trait.locus_identifier,gxe_,experiment)
@@ -547,7 +547,7 @@ def searchOverlapQTLView(request):
             # print overlap+traits gave error: coercing to Unicode: need string or buffer, Gene found 
             # exclude the query gene
             #.exclude(locus_identifier = search_gene)
-            overlap_traits = LOD.objects.filter(LOD_score__gte = lod_thld, marker_name = peak_marker,gxe=gxe_,experiment_name=experiment).exclude(locus_identifier = search_gene).order_by('-LOD_score')[:5]#.annotate(correlation = mysqlCorrelationSingle(LOD.locus_identifier,search_gene))
+            overlap_traits = LOD.objects.filter(LOD_score__gte = lod_thld, marker_name = peak_marker,gxe=gxe_,experiment_name=experiment).exclude(locus_identifier = search_gene).order_by('-LOD_score')#[:5]#.annotate(correlation = mysqlCorrelationSingle(LOD.locus_identifier,search_gene))
             #counter = 1 # default: present the expression value of the top 5 co-regulated traits along the chromosome in the same figure
             corr = {}
             for trait in overlap_traits:

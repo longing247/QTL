@@ -31,7 +31,7 @@ PreviewImage = function(uri) {
 <script> 
 $(document).ready(function() {
 
-  $('body a').click(function(event){
+  $('qtl_doc a').click(function(event){
 
     event.preventDefault();
     PreviewImage($(this).attr('href'));
@@ -44,6 +44,7 @@ $(document).ready(function() {
 <div id="dialog" title="An image!" style = "display: none;">
 	<img id = "image" src = ""/>
 </div>
+
 
 <div id = "visualization" class = "qtl_doc">
 
@@ -60,22 +61,18 @@ $(document).ready(function() {
 The causal gene located underneath the eQTL is likely to show correlation in expression levels with the gene that mapped to its positioin. 
 Genes involved in the same biological process mapping to the same position indicates that many of them might be under the control of a same gene.
 </p> 
-
 <p>By entering LOD cutoff and locus ID of target genes (Both are optional), <a id="image4" href="{% static 'qtl/pic/qtl_doc_corelation.png' %}">highly correlated genes</a> which have the same eQTL are presented in the <a id="image5" href="{% static 'qtl/pic/qtl_doc_overlap_eQTL.png' %}">LOD profile plot</a>. 
-
 <h3>cis/trans- eQTL plot</h3>
-
 <p> <a id="image5" href="{% static 'qtl/pic/qtl_doc_cis_trans_eqtl_plot.png' %}">Overall cis/trans- eQTL plot</a> </p>
-<p> Another <a id="image6" href="{% static 'qtl/pic/qtl_doc_lod_curve_d3.png' %}">LOD-curve plot</a> with additional information of the physical position of the queried gene.
-
+<p> Another <a id="image6" href="{% static 'qtl/pic/qtl_doc_lod_curve_d3.png' %}">LOD-curve plot</a> with additional information of the physical position of the queried gene.</p>
 </div>
+<div id = "marker" class = "qtl_doc">
 <h2>Genetic markers</h2>
 <p><a href = "http://137.224.100.212/qtl/marker">137.224.100.212/qtl/marker<a></p>
 </div>
 <div id = "metabolite" class = "qtl_doc">
 <h2> Primary metabolites </h2>
 <p><a href = "http://137.224.100.212/qtl/metabolite">137.224.100.212/qtl/metabolite<a></p>
-
 </div>
 
 {% endblock %}

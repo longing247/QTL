@@ -4,7 +4,15 @@ Created on Sep 23, 2014
 @author: jiao
 '''
 import time
-from .models import RIL
+import sys
+import os
+import math
+
+sys.path.append('/home/jiao/QTL')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'QTL.settings')
+
+from qtl.models import Gene,Marker,LOD,ExperimentMarker,RIL
+from django.db.models import Q
 
 
 def mysqlCorrelationAll(gene_name):
@@ -39,11 +47,7 @@ def mysqlCorrelationAll(gene_name):
                 ORDER BY r DESC
                 '''
     gene_corr = RIL.objects.raw(query_script,[gene_name])  
-    #gene_list = []
-    #corr_list = []
-    #for gene in gene_corr:
-    #    gene_list.append(gene.name)
-    #    corr_list.append(gene.r)
+    
     toc = time.time()
     print 'in %f seconds' % (toc-tic)
     #return gene_list,corr_list
@@ -89,4 +93,7 @@ def mysqlCorrelationSingle(gene_name,target_gene_name):
     print 'in %f seconds' % (toc-tic)
     #return gene_list,corr_list
     return gene_corr     
-    
+   
+if __name__=="__main__":   
+    query = mysqlCorrelationSingle('AT1G09950','AT5G53700')
+    print query[0].r

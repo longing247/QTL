@@ -8,8 +8,19 @@
 
 
 <link rel="stylesheet" href="{% static 'qtl/css/canvasXpress.css' %}" type="text/css"/>
+<link rel="stylesheet" href="{% static 'qtl/css/jquery.dataTables.css' %}" type="text/css"/>
+<link rel="stylesheet" href="{% static 'qtl/css/shCore.css' %}" type="text/css"/>
 
 <script type="text/javascript" src="{% static 'qtl/js/canvasXpress.min.js' %}"></script>
+<script type="text/javascript" src="{% static 'qtl/js/jquery.dataTables.min.js' %}"></script>
+<script type="text/javascript" src="{% static 'qtl/js/shCore.js' %}"></script>
+<script type="text/javascript" src="{% static 'qtl/js/demo.js' %}"></script>
+<script type="text/javascript" language = "javascript" class = "init">
+
+$(document).ready(function(){
+	$( marker_table ).DataTable();
+});
+</script>
 
 <script id='demoScript'> 
 var search_gene = {{search_gene|safe}}
@@ -46,6 +57,7 @@ var showDemo = function () {
 	<div>
 		<canvas id='canvas4' width='1080' height='540'></canvas>
 	</div>
+	
 	<ul>
 		<li> query_gene: {{ search_gene}} </li>
 		<li> Peak_marker: {{peak_marker}} </li>
@@ -54,9 +66,34 @@ var showDemo = function () {
 			<li> lod_thld: {{lod_thld}} </li>
 		{% endif %}	
 		{% if overlap_traits %}
-			{% for trait in overlap_traits %}
-		 		<li>e-traits:{{ trait.locus_identifier_id}}, expression (LOD):{{trait.LOD_score}}, Pearson correlation: {{corr|get_key:trait.locus_identifier_id }} </li>
-			{% endfor %}
+		
+			<table id="marker_table" class = "display" cellspacing = "0" width = "60">
+				<thead>
+					<tr>
+						<th>Locus identifier</th>
+						<th>LOD</th>
+						<th>Correlation coefficient</th>
+					</tr>
+				</thead>
+				<tfoot>
+					<tr>
+						<th>Locus identifier</th>
+						<th>LOD</th>
+						<th>Correlation coefficient</th>
+					</tr>
+				</tfoot>
+				<tbody>
+					{% for trait in overlap_traits %}
+					<tr>
+							<td>{{ trait.locus_identifier_id}}</td>
+							<td>{{ trait.LOD_score}}</td>
+							<td>{{ corr|get_key:trait.locus_identifier_id }}</td>
+					</tr>
+					{% endfor %}
+				</tbody>	
+			</table>
+			
+		 
 		{% endif %}	
 	</ul>
 	
