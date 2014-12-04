@@ -1,12 +1,25 @@
 {% extends 'base.html' %}
 {% block content %}
-{% if search_metabolite %}
+
 {% load staticfiles %}
+
+<link rel="stylesheet" href="{% static 'qtl/css/jquery.dataTables.css' %}" type="text/css"/>
+<link rel="stylesheet" href="{% static 'qtl/css/shCore.css' %}" type="text/css"/>
+
+<script type="text/javascript" src="{% static 'qtl/js/jquery.dataTables.min.js' %}"></script>
+<script type="text/javascript" src="{% static 'qtl/js/shCore.js' %}"></script>
+<script type="text/javascript" src="{% static 'qtl/js/demo.js' %}"></script>
+<script type="text/javascript" language = "javascript" class = "init">
+
+$(document).ready(function(){
+	$( metabolite_table ).DataTable();
+});
+</script>
+
+{% if search_metabolite %}
 <link rel="stylesheet" href="{% static 'qtl/css/canvasXpress.css' %}" type="text/css"/>
 <script type="text/javascript" src="{% static 'qtl/js/canvasXpress.min.js' %}"></script>
-
 <script id='demoScript'> 
-
 var search_metabolite_js = {{ search_metabolite|safe }};
 
 
@@ -229,14 +242,14 @@ var showDemo = function () {
       		{% endif %}
     </div>
 
-  </body>
+ 
 
-
+   </body>
 {% else %}
 
 	<form action="." method="get">
 		<label for="search_metabolite">Metabolite name:</label>
-		<input id="search_metabolite" name ="metabolite" type="text" required/>
+		<input id="search_metabolite" title = "i.e.Phosphate" name ="metabolite" type="text" required/>
 
 		<select id = "experiment" name = "experiment">
 			{% for exp in exps %}
@@ -246,7 +259,28 @@ var showDemo = function () {
 		<input type="submit" id="search_submit" value="Search" />
 
 	</form>
+	<table id="metabolite_table" class = "display" cellspacing = "0" width = "60">
+		<thead>
+			<tr>
+				<th>Metabolite</th>
+			</tr>
+		</thead>
+		<tfoot>
+			<tr>
+				<th>Metabolite</th>
+			</tr>
+		</tfoot>
+		<tbody>
+			{% for metabolite in metabolites %}
+				<tr>
+					<td>{{ metabolite.metabolite_name }}</td>
+				</tr>
+			{% endfor %}
+		</tbody>	
+	</table>
 {% endif %}
+
+
 {% endblock %}
 
 

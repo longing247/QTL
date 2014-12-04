@@ -694,8 +694,10 @@ def searchMetaboliteView(request):
             raise NameError('Query gene does not exist')
         
     else:
+        metabolites = Metabolite.objects.all()
         exps = Experiment.objects.all().values_list('experiment_name',flat=True)
-        return render_to_response('qtl/metabolite.html',{'exps':exps})
+        return render_to_response('qtl/metabolite.html',{'exps':exps,
+                                                         'metabolites':metabolites})
 def searchMarkerView(request):
     '''
     Query for a marker 
@@ -842,9 +844,14 @@ def eQTLPlotView(request):
     else:
         return render_to_response('qtl/gene.html',{})
 
+def documentationView(request):
+    return render_to_response('qtl/documentation.html')
+
 def upload_success(request):
     return render_to_response('qtl/success.html')
     
+
+
     
 ######################################
 # main #

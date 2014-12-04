@@ -31,7 +31,6 @@ $(document).ready(function(){
 		<input id="search_marker" title = "i.e. K9I9" name ="marker" type="text"/>
 		<input type="submit" id="search_submit" value="Search" />
 	</form>
-{% endif %}
 	<table id="marker_table" class = "display" cellspacing = "0" width = "60">
 		<thead>
 			<tr>
@@ -59,5 +58,8 @@ $(document).ready(function(){
 				</tr>
 			{% endfor %}
 		</tbody>	
+	</table>
+{% endif %}
+	
 
 {% endblock %}

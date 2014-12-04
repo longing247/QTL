@@ -23,6 +23,6 @@ urlpatterns = patterns('',
     url(r'^gene/chromosome/$',views.chromosomeView,name='chromosome'),
     url(r'^gene/eQTLPlot/$',views.eQTLPlotView,name='eQTL'),
     url(r'^chromosome/success/$',views.upload_success,name='success'),
-
+    url(r'^documentation/$',views.documentationView,name='documentation'),
     ) 
 #+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
