@@ -727,7 +727,7 @@ def eQTLPlotView(request):
         lod_thld = 2.3
         if request.GET.get('eQTL_lod_thld'):
             lod_thld = float(request.GET.get('eQTL_lod_thld').strip())
-        search_2gene = request.session['search_gene']
+        search_gene = request.session['search_gene']
         experiment = request.session['experiment_name']
         # output_dic will be used to generate JSON file.
         output_dic = {}
