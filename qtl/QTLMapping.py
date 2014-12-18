@@ -7,11 +7,13 @@ Created on Oct 24, 2014
 import sys
 import os
 import math
+import time
+import json
 
 sys.path.append('/home/jiao/QTL')
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'QTL.settings')
 
-from qtl.models import Gene,Marker,LOD,ExperimentMarker
+from qtl.models import Gene,Marker,LOD,ExperimentMarker,ExperimentGene
 from django.db.models import Q
 
 class EQTLMapping:
@@ -37,6 +39,10 @@ class EQTLMapping:
                 self.lsi = kwargs.get('lsi',1.5) #lod support interval
                 self.eqtls = self.getEQTL()
                 self.eqtls_ci = self.getEQTLInterval()
+                if self.eqtls:
+                    #self.candidateTF = self.geneMapping()
+                    self.cisTransProfile = self.cisTrans()
+                
                 
             else:
                 raise ValueError("ERROR: GENE does not exist!")
@@ -68,9 +74,9 @@ class EQTLMapping:
         parent_1_eqtl = LOD.objects.filter(locus_identifier = self.gene,experiment_name = self.experiment, LOD_score__gte = self.thld, gxe = self.gxe).values('marker_name')
         parent_2_eqtl = LOD.objects.filter(locus_identifier = self.gene,experiment_name = self.experiment, LOD_score__lte = (-self.thld), gxe = self.gxe).values('marker_name')
         #peak = LOD.objects.filter(locus_identifier = self.gene,experiment_name = self.experiment, LOD_score__lte = (-self.thld), gxe = self.gxe).values('marker_name','LOD_score')
-        eqtls = Marker.objects.filter(Q(marker_name__in=parent_1_eqtl) | Q(marker_name__in= parent_2_eqtl)).order_by('marker_chromosome','marker_cm')
+        eqtls = Marker.objects.filter(Q(marker_name__in=parent_1_eqtl) | Q(marker_name__in= parent_2_eqtl)).order_by('marker_chromosome','marker_cm').values_list('marker_name',flat=True)
         
-        return eqtls
+        return list(eqtls)
     
     def getEQTLInterval(self):
         '''
@@ -86,8 +92,7 @@ class EQTLMapping:
         chr = gene.chromosome
         #start = gene.start
         #end = gene.end
-        print self.gene,self.experiment,self.thld,self.gxe
-  
+        #print self.gene,self.experiment,self.thld,self.gxe
         chr_start = {1:3631,2:1871,3:4342,4:1180,5:1251}
         chr_end = {1:30425192,2:19696821,3:23459800,4:18584524,5:26970641}
         
@@ -167,6 +172,10 @@ class EQTLMapping:
         yield start,end #Yield the last group
     
     def geneMapping(self):
+        '''
+        identify the genes(candidate TF) that are located in the confident interval
+        '''
+        tic1 = time.time()
         gene_list = []
         gene_queryset_list = LOD.objects.filter(experiment_name = self.experiment).values('locus_identifier').distinct()
         gene_all_list = Gene.objects.filter(locus_identifier__in=gene_queryset_list).order_by('chromosome','start')
@@ -176,25 +185,94 @@ class EQTLMapping:
                 int_start = interval['start']
                 int_end = interval['end']
                 extend_gene = Gene.objects.filter(locus_identifier__in=gene_all_list,chromosome = chr,start__gte=int_start,end__lte=int_end)
-                print chr,len(extend_gene)
                 gene_list.extend(extend_gene)
+        
+        toc1 = time.time()
+        print 'geneMapping query from LOD in %f seconds %s' % (toc1-tic1,self.gene)
         return gene_list
-                
+    
+    def cisTrans(self):
+        '''
+        Varifies whether a gene/trait has eQTL(s) under a certain threshold, and define whether the eQTL is cis or trans.
+        Due to the limitation of the genetic marker resolution, at this stage we are not able to distinguish local-cis eQTL and local-trans eQTL. 
+        Therefore local-trans eQTL are considered to be cis-eQTL.
+        {1: [{'start': 9887359, 'end': 15926702}, {'start': 25827433, 'end': 28336537}], 2: [{'start': 6596380, 'end': 14491108}]}
+        '''
+        trait = self.getGene()
+        chr = trait.chromosome
+        start = trait.start
+        end = trait.end
+        cis = False
+        trans = False
+        nrOfTrans = 0
+        if self.eqtls:
+            for qtl_chr in self.eqtls_ci:
+                if chr == qtl_chr:
+                    for qtlPos in self.eqtls_ci[qtl_chr]:
+                        if start in range(qtlPos['start'],qtlPos['end']) or end in range(qtlPos['start'],qtlPos['end']):
+                            cis = True
+                        else:
+                            trans = True
+                            nrOfTrans+=1
+                else:
+                    trans = True
+                    nrOfTrans+=1
+            return cis,trans,nrOfTrans
+
+        
+                    
+        
+        
+
+def genomeWideEQTLMapping(_exp,_th,_gxe,_lsi):
+    '''
+    Genome wide EQTL mapping returns a list of dictionary of genes that have significant EQTL profile.
+    '''
+    tic = time.time()
+    trait_list = LOD.objects.filter(experiment_name = _exp).values_list('locus_identifier',flat=True).distinct()
+    eQTL_profile_list = []
+    
+    for trait in trait_list:
+        eQTL_profile = {}
+        trait_encode = trait.encode('ascii','ignore')
+        eQTL = EQTLMapping(gene = trait_encode,experiment = _exp,thld =_th,ci =_lsi)
+        print eQTL.gene
+        if eQTL.eqtls:
+            print eQTL.eqtls,eQTL.eqtls_ci
+            #print eQTL.candidateTF
+            print eQTL.cisTransProfile
+            eQTL_profile['trait'] = trait_encode
+            eQTL_profile['eQTL'] = eQTL.eqtls
+            eQTL_profile['ci'] = eQTL.eqtls_ci
+            #eQTL_profile['candidatesOfTF'] = eQTL.candidateTF
+            eQTL_profile['cisTransProfile'] = eQTL.cisTransProfile
+            eQTL_profile_list.append(eQTL_profile)
+
+    toc = time.time()
+    print 'Genome-wide eQTL mapping in %f seconds' % (toc-tic)
+    return eQTL_profile_list     
+
 if __name__=="__main__":
     #'AT1G03530'
-    eqtl_analysis = EQTLMapping(gene = 'AT1G03530',experiment = 'Ligterink_2014',thld = 2.3,gxe = False,ci=1.5)
-    eqtl_list = eqtl_analysis.eqtls
-    print eqtl_list
-    eqtl_ci = eqtl_analysis.eqtls_ci
-    print eqtl_ci
-    gene_list = eqtl_analysis.geneMapping()
+    #eqtl_analysis = EQTLMapping(gene = 'AT1G03530',experiment = 'Ligterink_2014',thld = 2.3,gxe = False,ci=1.5)
+    #eqtl_analysis = EQTLMapping(gene = 'AT3G01010',experiment = 'Ligterink_2014',thld = 2.3,gxe = False,ci=1.5)
+    #eqtl_list = eqtl_analysis.eqtls
+    #print eqtl_list
+   #eqtl_ci = eqtl_analysis.eqtls_ci
+    #print eqtl_ci
+    #gene_list = eqtl_analysis.geneMapping()
     #print gene_list
-    print len(gene_list)
-
-
+    #print len(gene_list)
+    
+    #Genome-wide eQTL mapping
+    _exp = 'Ligterink_2014'
+    _th = 4.3
+    _gxe = False
+    _lsi = 1.5
+    genome_wide_eQTL_list = genomeWideEQTLMapping(_exp,_th,_gxe,_lsi)
+    with open('genome_wide_eQTL_mapping.txt','w') as outfile:
+        json.dump(genome_wide_eQTL_list,outfile,sort_keys = True, indent = 4)
     
     
-    
-        
     
         
