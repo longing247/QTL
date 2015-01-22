@@ -95,5 +95,5 @@ def mysqlCorrelationSingle(gene_name,target_gene_name):
     return gene_corr     
    
 if __name__=="__main__":   
-    query = mysqlCorrelationSingle('AT1G09950','AT5G53700')
+    query = mysqlCorrelationSingle('AT1G74320','AT3G02520')
     print query[0].r

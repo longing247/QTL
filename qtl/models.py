@@ -56,7 +56,7 @@ class Parent(models.Model):
     expression = models.DecimalField(max_digits = 25, decimal_places = 15)
     locus_identifier = models.ForeignKey(Gene)
     experiment_name = models.CharField(max_length=40,blank = True)
-    
+    se = models.DecimalField(max_digits = 25, decimal_places = 15,blank =True)
     def __unicode__(self):
         return self.parent_type 
 

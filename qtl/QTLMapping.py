@@ -25,7 +25,7 @@ class EQTLMapping:
         '''
         EQTL class Constructor
         self.gene[string]           query gene
-        self.thld[float]            default LOD threshold is 3.84, corresponding to 0.0001446
+        self.thld[float]            default LOD threshold is 4.26(4.2644960, corresponding to a p value of 5.43881141028e-05 result from Statistic package.
         self.gxe [boolean]          set default value of gxe (experiment with environment permutation) to False
         Example of creating an instance: eqtls = EQTL(gene = 'AT1G01010',experiment = 'Ligterink_2014',thld = 10,gxe = True)
         
@@ -34,7 +34,7 @@ class EQTLMapping:
             if Gene.objects.filter(locus_identifier = kwargs.get('gene')).exists():#change it to validating from database
                 self.gene = kwargs.get('gene')
                 self.experiment = kwargs.get('experiment')
-                self.thld = kwargs.get('thld',3.84)
+                self.thld = kwargs.get('thld',4.26)
                 self.gxe = kwargs.get('gxe',False)
                 self.lsi = kwargs.get('lsi',1.5) #lod support interval
                 self.eqtls = self.getEQTL()
@@ -204,7 +204,7 @@ class EQTLMapping:
         end = trait.end
         cis = False
         trans = False
-        nrOfTrans = 0
+        nrOfTrans = 0 # individual
         if self.eqtls:
             for qtl_chr in self.eqtls_ci:
                 if chr == qtl_chr:
@@ -217,26 +217,21 @@ class EQTLMapping:
                 else:
                     trans = True
                     nrOfTrans+=1
-            return cis,trans,nrOfTrans
-
-        
                     
-        
-        
+            return cis,trans,nrOfTrans
 
 def genomeWideEQTLMapping(_exp,_th,_gxe,_lsi):
     '''
     Genome wide EQTL mapping returns a list of dictionary of genes that have significant EQTL profile.
     '''
     tic = time.time()
-    trait_list = LOD.objects.filter(experiment_name = _exp).values_list('locus_identifier',flat=True).distinct()
+    trait_list = LOD.objects.filter(experiment_name = _exp).values_list('locus_identifier',flat=True).distinct() # Which gene expression was measured.
     eQTL_profile_list = []
-    
     for trait in trait_list:
         eQTL_profile = {}
         trait_encode = trait.encode('ascii','ignore')
-        eQTL = EQTLMapping(gene = trait_encode,experiment = _exp,thld =_th,ci =_lsi)
-        print eQTL.gene
+        eQTL = EQTLMapping(gene = trait_encode,experiment = _exp,thld =_th,lsi=_lsi,gxe = _gxe)
+        print eQTL.gene,eQTL.experiment,eQTL.thld,eQTL.gxe,eQTL.lsi
         if eQTL.eqtls:
             print eQTL.eqtls,eQTL.eqtls_ci
             #print eQTL.candidateTF
@@ -247,18 +242,17 @@ def genomeWideEQTLMapping(_exp,_th,_gxe,_lsi):
             #eQTL_profile['candidatesOfTF'] = eQTL.candidateTF
             eQTL_profile['cisTransProfile'] = eQTL.cisTransProfile
             eQTL_profile_list.append(eQTL_profile)
-
     toc = time.time()
     print 'Genome-wide eQTL mapping in %f seconds' % (toc-tic)
     return eQTL_profile_list     
 
 if __name__=="__main__":
     #'AT1G03530'
-    #eqtl_analysis = EQTLMapping(gene = 'AT1G03530',experiment = 'Ligterink_2014',thld = 2.3,gxe = False,ci=1.5)
+    #eqtl_analysis = EQTLMapping(gene = 'AT1G01200',experiment = 'Ligterink_2014',thld = 3.85,gxe = False,ci=1.5)
     #eqtl_analysis = EQTLMapping(gene = 'AT3G01010',experiment = 'Ligterink_2014',thld = 2.3,gxe = False,ci=1.5)
     #eqtl_list = eqtl_analysis.eqtls
-    #print eqtl_list
-   #eqtl_ci = eqtl_analysis.eqtls_ci
+    #print eqtl_list 
+    #eqtl_ci = eqtl_analysis.eqtls_ci
     #print eqtl_ci
     #gene_list = eqtl_analysis.geneMapping()
     #print gene_list
@@ -266,11 +260,18 @@ if __name__=="__main__":
     
     #Genome-wide eQTL mapping
     _exp = 'Ligterink_2014'
-    _th = 4.3
+    _th = 3.85
     _gxe = False
-    _lsi = 1.5
+    _lsi = 2
     genome_wide_eQTL_list = genomeWideEQTLMapping(_exp,_th,_gxe,_lsi)
-    with open('genome_wide_eQTL_mapping.txt','w') as outfile:
+    #with open('genome_wide_eQTL_mapping_Ligterink_2014_gxe0_3.85.txt','w') as outfile:
+    with open('genome_wide_eQTL_mapping_Ligterink_2014_gxe0_3.85_2.txt','w') as outfile:
+    #with open('genome_wide_eQTL_mapping_Ligterink_2014_gxe1_2.7.txt','w') as outfile:
+    #with open('genome_wide_eQTL_mapping_Ligterink_2014_gxe1_2.7_2.txt','w') as outfile:
+    #with open('genome_wide_eQTL_mapping_Keurentjes_2007_gxe0_3.3_1.txt','w') as outfile:
+    #with open('genome_wide_eQTL_mapping_Keurentjes_2007_gxe0_3.3_2.txt','w') as outfile:
+    #with open('genome_wide_eQTL_mapping_Snoek_2012_gxe1_3.01.txt','w') as outfile:
+    #with open('genome_wide_eQTL_mapping_Snoek_2012_gxe1_3.01_2.txt','w') as outfile:
         json.dump(genome_wide_eQTL_list,outfile,sort_keys = True, indent = 4)
     
     
