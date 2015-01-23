@@ -90,7 +90,7 @@ def mysqlCorrelationSingle(gene_name,target_gene_name):
     #    gene_list.append(gene.name)
     #    corr_list.append(gene.r)
     toc = time.time()
-    print 'in %f seconds' % (toc-tic)
+    #print 'in %f seconds' % (toc-tic)
     #return gene_list,corr_list
     return gene_corr     
    

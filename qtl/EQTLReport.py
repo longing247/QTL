@@ -9,16 +9,19 @@ Genome-wide eQTL mapping report
 import json
 import sys
 import os
+import math
 
 sys.path.append('/home/jiao/QTL')
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'QTL.settings')
 
 
-from qtl.models import Gene,Parent
+from qtl.models import Gene,Parent,ExperimentMarker
 from django.db.models import Q
 
 from TStatistic import tTest,tToP
 from FDR import pvalThld,getDicVal,sortDicByVal
+from MySQLCorrelation import mysqlCorrelationAll,mysqlCorrelationSingle
+
 
 def eQTLReport(fi,fo):
     '''
@@ -152,8 +155,6 @@ def degReport(exp_name,n1,n2,parent1,parent2,fo):
     @type parent2: string
     @param parent2: name of the experiment e.g.ShaRP
     
-    @rtype fo: file
-    @return fo: report file
     '''
     pval = dEParent(exp_name,n1,n2,parent1,parent2)
     sorted_pval = getDicVal(pval)
@@ -205,6 +206,58 @@ def intersectionGenes(f1,f2,fo):
                 for gene in overlap_genes:
                     out.write(gene+'\n')
                 print 'Process completed'
+
+def hasOverlapEQTL(fi,cor_thld,fo):
+    '''
+    lookup paired (co-expressed) genes that show high correlation over RIL population and have overlap eqtl profile from genome wide eQTL report
+    
+    @type fi: string
+    @param fi: path of eQTL report file. e.g. genome_wide_eQTL_mapping_Ligterink_2014_gxe0_3.85.txt
+    
+    @type cor_thld: float
+    @param cor_thld: absolute value of correlation threshold
+    
+    @type fo: string
+    @param fo: path of output file
+    '''
+
+    input = open(fi) 
+    report = json.load(input)
+    eqtl_list = [eqtl for eqtls in report for eqtl in eqtls['eQTL']]
+    eqtl_list = set(eqtl_list)
+    print 'Number of markers: %d' %len(eqtl_list)
+    
+    #create summary of eQTL profile [{gene:eQTL},...]
+    eqtl_profile = {}
+    for profile in report:
+        eqtl_profile[profile['trait']] = profile['eQTL']
+
+    out = {}
+    for eqtl in eqtl_list:
+        cor_gene = []
+        print eqtl
+        gene_overlap_eqtl = [key for key, value in eqtl_profile.iteritems() if eqtl in value]
+        print len(gene_overlap_eqtl)
+        for gene in gene_overlap_eqtl:
+            paired_gene_dic = {}
+            paired_gene_list = []
+            for target_gene in gene_overlap_eqtl:
+                if gene!=target_gene:
+                    for query in mysqlCorrelationSingle(gene,target_gene):
+                        cor = query.r 
+                        print cor
+                    if math.fabs(cor)>=cor_thld:
+                        paired_gene_list.append(target_gene)
+                        print eqtl,gene,target_gene
+            if len(paired_gene_list)!=0:
+                paired_gene_dic[gene]= paired_gene_list
+                cor_gene.append(paired_gene_dic)
+        if len(cor_gene) !=0:
+            out[eqtl] = cor_gene
+    with open(fo,'w') as output:
+        json.dump(out,output,sort_keys = True, indent = 4)
+        
+        
 
 if __name__=="__main__":     
     
@@ -310,38 +363,39 @@ if __name__=="__main__":
     #pass
     
     
-    deg('BayShaFRDE.txt','gene_list_BayShaFRDE.txt')
-    deg('BaySha6HDE.txt','gene_list_BaySha6HDE.txt')
-    deg('BayShaARDE.txt','gene_list_BayShaARDE.txt')
-    deg('BayShaRPDE.txt','gene_list_BayShaRPDE.txt')
+    #deg('BayShaFRDE.txt','gene_list_BayShaFRDE.txt')
+    #deg('BaySha6HDE.txt','gene_list_BaySha6HDE.txt')
+    #deg('BayShaARDE.txt','gene_list_BayShaARDE.txt')
+    #deg('BayShaRPDE.txt','gene_list_BayShaRPDE.txt')
     
-    geneHasEQTL('genome_wide_eQTL_mapping_Ligterink_2014_gxe0_3.85.txt','gene_list_Ligterink_2014_gxe0_3.85.txt')
-    geneHasEQTL('genome_wide_eQTL_mapping_Ligterink_2014_gxe1_2.7.txt','gene_list_Ligterink_2014_gxe1_2.7.txt')
-    geneHasEQTL('genome_wide_eQTL_mapping_Keurentjes_2007_gxe0_3.3.txt','gene_list_Keurentjes_2007_gxe0.3.3.txt')
-    geneHasEQTL('genome_wide_eQTL_mapping_Snoek_2012_gxe1_3.01.txt','gene_list_Snoek_2012_gxe1_3.01.txt')
+    #geneHasEQTL('genome_wide_eQTL_mapping_Ligterink_2014_gxe0_3.85.txt','gene_list_Ligterink_2014_gxe0_3.85.txt')
+    #geneHasEQTL('genome_wide_eQTL_mapping_Ligterink_2014_gxe1_2.7.txt','gene_list_Ligterink_2014_gxe1_2.7.txt')
+    #geneHasEQTL('genome_wide_eQTL_mapping_Keurentjes_2007_gxe0_3.3.txt','gene_list_Keurentjes_2007_gxe0.3.3.txt')
+    #geneHasEQTL('genome_wide_eQTL_mapping_Snoek_2012_gxe1_3.01.txt','gene_list_Snoek_2012_gxe1_3.01.txt')
     
-    geneHasEQTL('genome_wide_eQTL_mapping_Ligterink_2014_gxe0_3.85_2.txt','gene_list_Ligterink_2014_gxe0_3.85_2.txt')
-    geneHasEQTL('genome_wide_eQTL_mapping_Ligterink_2014_gxe1_2.7_2.txt','gene_list_Ligterink_2014_gxe1_2.7_2.txt')
-    geneHasEQTL('genome_wide_eQTL_mapping_Keurentjes_2007_gxe0_3.3_2.txt','gene_list_Keurentjes_2007_gxe0.3.3_2.txt')
-    geneHasEQTL('genome_wide_eQTL_mapping_Snoek_2012_gxe1_3.01_2.txt','gene_list_Snoek_2012_gxe1_3.01_2.txt')
+    #geneHasEQTL('genome_wide_eQTL_mapping_Ligterink_2014_gxe0_3.85_2.txt','gene_list_Ligterink_2014_gxe0_3.85_2.txt')
+    #geneHasEQTL('genome_wide_eQTL_mapping_Ligterink_2014_gxe1_2.7_2.txt','gene_list_Ligterink_2014_gxe1_2.7_2.txt')
+    #geneHasEQTL('genome_wide_eQTL_mapping_Keurentjes_2007_gxe0_3.3_2.txt','gene_list_Keurentjes_2007_gxe0.3.3_2.txt')
+    #geneHasEQTL('genome_wide_eQTL_mapping_Snoek_2012_gxe1_3.01_2.txt','gene_list_Snoek_2012_gxe1_3.01_2.txt')
     
-    intersectionGenes('gene_list_BayShaFRDE.txt','gene_list_Ligterink_2014_gxe0_3.85.txt','BayShaFR_ligterink_2014_gxe0_3.85.txt') #529
-    intersectionGenes('gene_list_BayShaFRDE.txt','gene_list_Ligterink_2014_gxe1_2.7.txt','BayShaFR_ligterink_2014_gxe1_2.7.txt')  #197
-    intersectionGenes('gene_list_BayShaFRDE.txt','gene_list_Ligterink_2014_gxe0_3.85_2.txt','BayShaFR_ligterink_2014_gxe0_3.85_2.txt') #529
-    intersectionGenes('gene_list_BayShaFRDE.txt','gene_list_Ligterink_2014_gxe1_2.7_2.txt','BayShaFR_ligterink_2014_gxe1_2.7_2.txt') #197
+    #intersectionGenes('gene_list_BayShaFRDE.txt','gene_list_Ligterink_2014_gxe0_3.85.txt','BayShaFR_ligterink_2014_gxe0_3.85.txt') #529
+    #intersectionGenes('gene_list_BayShaFRDE.txt','gene_list_Ligterink_2014_gxe1_2.7.txt','BayShaFR_ligterink_2014_gxe1_2.7.txt')  #197
+    #intersectionGenes('gene_list_BayShaFRDE.txt','gene_list_Ligterink_2014_gxe0_3.85_2.txt','BayShaFR_ligterink_2014_gxe0_3.85_2.txt') #529
+    #intersectionGenes('gene_list_BayShaFRDE.txt','gene_list_Ligterink_2014_gxe1_2.7_2.txt','BayShaFR_ligterink_2014_gxe1_2.7_2.txt') #197
     
-    intersectionGenes('gene_list_BaySha6HDE.txt','gene_list_Ligterink_2014_gxe0_3.85.txt','BaySha6H_ligterink_2014_gxe0_3.85.txt') #712
-    intersectionGenes('gene_list_BaySha6HDE.txt','gene_list_Ligterink_2014_gxe1_2.7.txt','BaySha6H_ligterink_2014_gxe1_2.7.txt')  #257
-    intersectionGenes('gene_list_BaySha6HDE.txt','gene_list_Ligterink_2014_gxe0_3.85_2.txt','BaySha6H_ligterink_2014_gxe0_3.85_2.txt') #712
-    intersectionGenes('gene_list_BaySha6HDE.txt','gene_list_Ligterink_2014_gxe1_2.7_2.txt','BaySha6H_ligterink_2014_gxe1_2.7_2.txt') #257
+    #intersectionGenes('gene_list_BaySha6HDE.txt','gene_list_Ligterink_2014_gxe0_3.85.txt','BaySha6H_ligterink_2014_gxe0_3.85.txt') #712
+    #intersectionGenes('gene_list_BaySha6HDE.txt','gene_list_Ligterink_2014_gxe1_2.7.txt','BaySha6H_ligterink_2014_gxe1_2.7.txt')  #257
+    #intersectionGenes('gene_list_BaySha6HDE.txt','gene_list_Ligterink_2014_gxe0_3.85_2.txt','BaySha6H_ligterink_2014_gxe0_3.85_2.txt') #712
+    #intersectionGenes('gene_list_BaySha6HDE.txt','gene_list_Ligterink_2014_gxe1_2.7_2.txt','BaySha6H_ligterink_2014_gxe1_2.7_2.txt') #257
     
-    intersectionGenes('gene_list_BayShaARDE.txt','gene_list_Ligterink_2014_gxe0_3.85.txt','BayShaAR_ligterink_2014_gxe0_3.85.txt') #459
-    intersectionGenes('gene_list_BayShaARDE.txt','gene_list_Ligterink_2014_gxe1_2.7.txt','BayShaAR_ligterink_2014_gxe1_2.7.txt')  #170
-    intersectionGenes('gene_list_BayShaARDE.txt','gene_list_Ligterink_2014_gxe0_3.85_2.txt','BayShaAR_ligterink_2014_gxe0_3.85_2.txt') #459
-    intersectionGenes('gene_list_BayShaARDE.txt','gene_list_Ligterink_2014_gxe1_2.7_2.txt','BayShaAR_ligterink_2014_gxe1_2.7_2.txt')#170
+    #intersectionGenes('gene_list_BayShaARDE.txt','gene_list_Ligterink_2014_gxe0_3.85.txt','BayShaAR_ligterink_2014_gxe0_3.85.txt') #459
+    #intersectionGenes('gene_list_BayShaARDE.txt','gene_list_Ligterink_2014_gxe1_2.7.txt','BayShaAR_ligterink_2014_gxe1_2.7.txt')  #170
+    #intersectionGenes('gene_list_BayShaARDE.txt','gene_list_Ligterink_2014_gxe0_3.85_2.txt','BayShaAR_ligterink_2014_gxe0_3.85_2.txt') #459
+    #intersectionGenes('gene_list_BayShaARDE.txt','gene_list_Ligterink_2014_gxe1_2.7_2.txt','BayShaAR_ligterink_2014_gxe1_2.7_2.txt')#170
     
-    intersectionGenes('gene_list_BayShaRPDE.txt','gene_list_Ligterink_2014_gxe0_3.85.txt','BayShaRP_ligterink_2014_gxe0_3.85.txt') #138
-    intersectionGenes('gene_list_BayShaRPDE.txt','gene_list_Ligterink_2014_gxe1_2.7.txt','BayShaRP_ligterink_2014_gxe1_2.7.txt')  #43    
-    intersectionGenes('gene_list_BayShaRPDE.txt','gene_list_Ligterink_2014_gxe0_3.85_2.txt','BayShaRP_ligterink_2014_gxe0_3.85_2.txt') #138
-    intersectionGenes('gene_list_BayShaRPDE.txt','gene_list_Ligterink_2014_gxe1_2.7_2.txt','BayShaRP_ligterink_2014_gxe1_2.7_2.txt') #43
+    #intersectionGenes('gene_list_BayShaRPDE.txt','gene_list_Ligterink_2014_gxe0_3.85.txt','BayShaRP_ligterink_2014_gxe0_3.85.txt') #138
+    #intersectionGenes('gene_list_BayShaRPDE.txt','gene_list_Ligterink_2014_gxe1_2.7.txt','BayShaRP_ligterink_2014_gxe1_2.7.txt')  #43    
+    #intersectionGenes('gene_list_BayShaRPDE.txt','gene_list_Ligterink_2014_gxe0_3.85_2.txt','BayShaRP_ligterink_2014_gxe0_3.85_2.txt') #138
+    #intersectionGenes('gene_list_BayShaRPDE.txt','gene_list_Ligterink_2014_gxe1_2.7_2.txt','BayShaRP_ligterink_2014_gxe1_2.7_2.txt') #43
     
+    hasOverlapEQTL('genome_wide_eQTL_mapping_Ligterink_2014_gxe0_3.85.txt',0.9,'Overlap_correlation_Ligterink_2014_gxe0_3.85.txt')
