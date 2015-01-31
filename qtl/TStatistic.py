@@ -68,7 +68,7 @@ def seToS(se,nr):
     @rtype s: float
     @return s: variance
     '''
-    s = math.sqrt(se*math.sqrt(nr)*se*math.sqrt(nr))
+    s = se*math.sqrt(nr)
     return s
 
 def tToP(tscore,df):

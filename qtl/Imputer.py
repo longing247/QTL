@@ -17,16 +17,15 @@ def impute(list,**kwargs):
         gap = None
         step = None
         if list[i] == missing_values:
-            for j in range(i,len(list)):
-                print i,j       
+            for j in range(i,len(list)):     
                 if list[j] != missing_values:
                     if i!=0:
                         prev = i-1
                         next = j
                         gap = j-i
-                        print 'next',list[next],'prev',list[prev]
+                        #print 'next',list[next],'prev',list[prev]
                         step = (list[next]- list[prev])/(gap+1.0)
-                        print step, gap,'not end'
+                        #print step, gap,'not end'
                         for k in range(gap):
                             list[i+k] = list[i-1+k]+step
                         break
@@ -45,15 +44,14 @@ def impute(list,**kwargs):
                         prev = i-1
                         gap = j-i
                         step = (list[j]-list[prev])/(gap+1.0)
-                        print gap,step,'end'
+                        #print gap,step,'end'
                         for k in range(gap-1):
                             list[i+k] = list[i-1+k]+step
                         break
                     else:
                         pass
         else:
-            pass
-    print list            
+            pass           
     return list
 
 if __name__ == '__main__':

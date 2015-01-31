@@ -10,12 +10,13 @@ import json
 import sys
 import os
 import math
+import gc
 
 sys.path.append('/home/jiao/QTL')
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'QTL.settings')
 
 
-from qtl.models import Gene,Parent,ExperimentMarker
+from qtl.models import Gene,Parent,ExperimentMarker,RIL,ExperimentGene
 from django.db.models import Q
 
 from TStatistic import tTest,tToP
@@ -68,8 +69,10 @@ def eQTLReport(fi,fo):
                         bothCisTrans = True
                         nr_overall_both_cis_trans += 1
                         if qtl['cisTransProfile'][2]>1:
+                            added_trans = qtl['cisTransProfile'][2]-1
                             multiTrans = True
                             nr_overall_multi_trans +=1
+                            nr_overall_trans += added_trans
                             nrOfTrans = qtl['cisTransProfile'][2]
                             multi_trans_list.append(qtl['trait'])
                         else:
@@ -207,9 +210,44 @@ def intersectionGenes(f1,f2,fo):
                     out.write(gene+'\n')
                 print 'Process completed'
 
+def summary(fi,fo):
+    '''
+    results only the locus identifier per row
+    '''
+    with open(fi) as input:
+        with open(fo,'w') as output:
+            for line in input:
+                gene = line.split('\t')[0].strip()
+                output.write(gene+'\n')
+
+def intersectionGenes2(f1,f2,fo):
+    '''
+    Find out the intersection genes that are differential expressed over three conditions.
+    '''
+    print 'compare overlap genes between %s and %s ' % (f1,f2)
+    with open(f1) as input1:
+        deg1 = [line.split('\t')[0].strip() for line in input1] 
+        print 'length %d' % len(deg1)
+        print '%d of genes are differential expressed in %s' % (len(deg1),f1)        
+        with open(f2) as input2:
+            deg2 = [line.split('\t')[0].strip() for line in input2]
+            print '%d of genes are differential expressed in %s' % (len(deg2),f2)
+            overlap_genes = list(set(deg1) & set(deg2))
+            print '%d of overlapped genes' % len(overlap_genes)
+            with open(fo,'w') as out:
+                for gene in overlap_genes:
+                    out.write(gene+'\n')
+                    print 'Process completed'
+
+    
+    
+    
+
 def hasOverlapEQTL(fi,cor_thld,fo):
     '''
     lookup paired (co-expressed) genes that show high correlation over RIL population and have overlap eqtl profile from genome wide eQTL report
+    
+    @bug: Out of memory (Needed 8164 bytes) django.db.utils.OperationalError: (2008, 'MySQL client ran out of memory') 67/69 marker.
     
     @type fi: string
     @param fi: path of eQTL report file. e.g. genome_wide_eQTL_mapping_Ligterink_2014_gxe0_3.85.txt
@@ -223,15 +261,20 @@ def hasOverlapEQTL(fi,cor_thld,fo):
 
     input = open(fi) 
     report = json.load(input)
-    eqtl_list = [eqtl for eqtls in report for eqtl in eqtls['eQTL']]
-    eqtl_list = set(eqtl_list)
+    #eqtl_list = [eqtl for eqtls in report for eqtl in eqtls['eQTL']]
+    #eqtl_list = set(eqtl_list)
+    #eqtl_list = ['IND6375', 'F5I14', 'MSAT518662']
+    #eqtl_list = [u'MSAT514', u'MSAT399', u'K9I9', u'MSAT500027', u'MSAT127088', u'MSAT59', u'MSAT25', u'NGA225', u'MSAT418', u'IND1136', u'MSAT512110', u'MSAT370', u'MSAT522', u'MSAT100008', u'MSAT15', u'MSAT318406', u'JV6162', u'MSAT332', u'MSAT319', u'MSAT305754', u'MSAT519', u'NGA8', u'NGA128', u'MSAT200897', u'MSAT210', u'CIW7', u'MSAT108193', u'MSAT241', u'MSAT3117', u'MSAT110', u'MSAT443', u'MSAT113', u'MSAT27', u'NGA248', u'NGA249', u'ATHCHIB2', u'T1G11', u'MSAT49', u'MSAT48', u'IND628', u'MSAT318', u'IND2188', u'dCAPsAPR2', u'F21M12', u'IND216199', u'NGA172', u'T27K12', u'MSAT365', u'MSAT222', u'MSAT415', u'MSAT142', u'MSAT321', u'NGA151', u'IND4992', u'MSAT468', u'NGA139', u'JV7576', u'MSAT520037', u'MSAT559', u'CZSOD2', u'MSAT439', u'MSAT435', u'MSAT236', u'MSAT238', u'MSAT512', u'MSAT437']
+    eqtl_list = [u'IND6375', u'F5I14', u'MSAT518662']
+    print eqtl_list
     print 'Number of markers: %d' %len(eqtl_list)
     
     #create summary of eQTL profile [{gene:eQTL},...]
     eqtl_profile = {}
     for profile in report:
         eqtl_profile[profile['trait']] = profile['eQTL']
-
+    
+    
     out = {}
     for eqtl in eqtl_list:
         cor_gene = []
@@ -243,12 +286,12 @@ def hasOverlapEQTL(fi,cor_thld,fo):
             paired_gene_list = []
             for target_gene in gene_overlap_eqtl:
                 if gene!=target_gene:
-                    for query in mysqlCorrelationSingle(gene,target_gene):
-                        cor = query.r 
-                        print cor
+                    cor = mysqlCorrelationSingle(gene,target_gene)[0].r
                     if math.fabs(cor)>=cor_thld:
                         paired_gene_list.append(target_gene)
                         print eqtl,gene,target_gene
+                    del cor
+            gc.collect()        
             if len(paired_gene_list)!=0:
                 paired_gene_dic[gene]= paired_gene_list
                 cor_gene.append(paired_gene_dic)
@@ -257,12 +300,28 @@ def hasOverlapEQTL(fi,cor_thld,fo):
     with open(fo,'w') as output:
         json.dump(out,output,sort_keys = True, indent = 4)
         
-        
+def transgressiveSegregation(exp_name,_gxe,fo):
+    '''
+    lookup genes that the expression level in the RIL population showed transgressive segregation beyond its parent. It is defined as the expression level of gene of a RIL, which lay beyond the region
+    mu+-2SD of its parents, where mu is the average expression level of the parents, and SD is the standard deviation.
+    
+    @type exp_name: string
+    @param exp_name: name of the experiment
+    
+    @type _gxe: int
+    @param gxe: 0 or 1, stands for whether the experiment considers environmental interaction.
+    
+    @type fo: string
+    @param fo: path of output file
+    '''
+    
+    
+    pass
 
 if __name__=="__main__":     
     
     #Experiment_name gxe_condition, LOD_threshold, LOD confidence interval
-    #nr of returned significant entries, number of cis-only eQTL, nr of trans-only eQTL, nr of overall cis-eQTL, nr of overall trans-eQTL
+    #nr of mapped genes, number of genes have cis-only eQTL, nr of genes have trans-only eQTL, nr of overall cis-eQTL, nr of overall trans-eQTL
     #nr of traits that have both cis- and trans-eQTL, nr of traits that have multiple trans-eQTL.
     
     #Ligterink 2014 gxe 0 3.85 1.5        
@@ -398,4 +457,33 @@ if __name__=="__main__":
     #intersectionGenes('gene_list_BayShaRPDE.txt','gene_list_Ligterink_2014_gxe0_3.85_2.txt','BayShaRP_ligterink_2014_gxe0_3.85_2.txt') #138
     #intersectionGenes('gene_list_BayShaRPDE.txt','gene_list_Ligterink_2014_gxe1_2.7_2.txt','BayShaRP_ligterink_2014_gxe1_2.7_2.txt') #43
     
-    hasOverlapEQTL('genome_wide_eQTL_mapping_Ligterink_2014_gxe0_3.85.txt',0.9,'Overlap_correlation_Ligterink_2014_gxe0_3.85.txt')
+    
+    #summary('report/BayFRARDE.txt','report/summary_BayFRARDE.txt')
+    #summary('report/BayFR6HDE.txt','report/summary_BayFR6HDE.txt')
+    #summary('report/BayFRRPDE.txt','report/summary_BayFRRPDE.txt')
+    #summary('report/BayAR6HDE.txt','report/summary_BayAR6HDE.txt')
+    #summary('report/BayARRPDE.txt','report/summary_BayARRPDE.txt')
+    #summary('report/Bay6HRPDE.txt','report/summary_Bay6HRPDE.txt')
+    
+    summary('report/ShaFRARDE.txt','report/summary_ShaFRARDE.txt')
+    summary('report/ShaFR6HDE.txt','report/summary_ShaFR6HDE.txt')
+    summary('report/ShaFRRPDE.txt','report/summary_ShaFRRPDE.txt')
+    summary('report/ShaAR6HDE.txt','report/summary_ShaAR6HDE.txt')
+    summary('report/ShaARRPDE.txt','report/summary_ShaARRPDE.txt')
+    summary('report/Sha6HRPDE.txt','report/summary_Sha6HRPDE.txt')
+    
+    #intersectionGenes('report/summary_BayFRARDE.txt','report/summary_BayAR6HDE.txt','report/Bay012intersection.txt') #97
+    #intersectionGenes('report/summary_BayFRARDE.txt','report/summary_BayARRPDE.txt','report/Bay013intersection.txt') #114
+    #intersectionGenes('report/summary_BayFR6HDE.txt','report/summary_dBay6HRPDE.txt','report/Bay023intersection.txt') #3636
+    #intersectionGenes('report/summary_BayAR6HDE.txt','report/summary_Bay6HRPDE.txt','report/Bay123intersection.txt') #3222
+    #intersectionGenes('report/Bay012intersection.txt','report/Bay123intersection.txt','report/Bay123intersection.txt') #45
+    
+    intersectionGenes('report/summary_ShaFRARDE.txt','report/summary_ShaAR6HDE.txt','report/Sha012intersection.txt') #83
+    intersectionGenes('report/summary_ShaFRARDE.txt','report/summary_ShaARRPDE.txt','report/Sha013intersection.txt') #111
+    intersectionGenes('report/summary_ShaFR6HDE.txt','report/summary_Sha6HRPDE.txt','report/Sha023intersection.txt') #2628
+    intersectionGenes('report/summary_ShaAR6HDE.txt','report/summary_Sha6HRPDE.txt','report/Sha123intersection.txt') #2715
+    intersectionGenes('report/Sha012intersection.txt','report/Sha123intersection.txt','report/Sha123intersection.txt') #43
+    
+    #hasOverlapEQTL('report/genome_wide_eQTL_mapping_Ligterink_2014_gxe0_3.85.txt',0.8,'report/Overlap_correlation_Ligterink_2014_gxe0_3.85_add.txt')
+    #hasOverlapEQTL('report/genome_wide_eQTL_mapping_Ligterink_2014_gxe1_2.7.txt',0.8,'report/Overlap_correlation_Ligterink_2014_gxe1_2.7_add.txt')
+    
