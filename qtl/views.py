@@ -277,8 +277,9 @@ def searchGeneView(request):
                 is_gxe_exp = True
                 render_dic['is_gxe_exp'] = is_gxe_exp
             
-            if is_parent_exp:         
-                exp_list = Parent.objects.filter(locus_identifier = search_gene, experiment_name = experiment)
+            if is_parent_exp:  
+                excl_list = ['Bay_gen','Sha_gen']       
+                exp_list = Parent.objects.filter(locus_identifier = search_gene, experiment_name = experiment).exclude(parent_type__in = excl_list)
                 parent_type_list = []
                 parent_expression_list = []
                 for exp in exp_list:
