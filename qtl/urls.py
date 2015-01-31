@@ -10,6 +10,7 @@ from django.conf import settings
 
 
 urlpatterns = patterns('',
+    url(r'^$',views.searchGeneView,name='search_gene'),
     url(r'^about/$',views.aboutView,name='aboutView'),
     url(r'^upload/$',views.uploadView,name='uploadView'),   
     url(r'^upload/success/$',views.upload_success,name='uploadSuccessView'),                 
